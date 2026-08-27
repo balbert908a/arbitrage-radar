@@ -1,4 +1,6 @@
-# Arbitrage Radar — Release 1.4
+# Arbitrage Radar — Release 1.5
+
+Renumbered current build; functionality is unchanged from the immediately prior 1.4 package.
 
 Personal sourcing intelligence release.
 
