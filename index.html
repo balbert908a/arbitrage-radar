@@ -27,7 +27,7 @@
       <section id="dashboard" class="view active">
         <div class="hero card">
           <div>
-            <span class="pill hot">RELEASE 1.6</span>
+            <span class="pill hot">RELEASE 1.7</span>
             <h2>Know where to hunt before you leave.</h2>
             <p>Interactive sourcing map + expanded retailer intelligence + clearance + hunt mode + sold-comps links + routes + inventory.</p>
           </div>
@@ -166,14 +166,30 @@
 
 
       <section id="nearby" class="view">
-        <div class="section-head stacked-mobile"><div><div class="eyebrow">GPS SOURCING</div><h2>Local Sourcing Radar</h2><p>Discover return & bin stores, liquidation, estate sales, garage sales, flea markets, thrift stores and auctions around your current location.</p></div><button class="primary" id="gpsBtn">Scan local area</button></div>
+        <div class="section-head stacked-mobile"><div><div class="eyebrow">GPS SOURCING</div><h2>Local Sourcing Radar</h2><p>Find sourcing locations around you. Nearby searches work even if the embedded map or directory service fails.</p></div><div class="near-actions"><button class="primary" id="gpsBtn" type="button">Use my location</button><button class="ghost" id="retryGpsBtn" type="button">Retry GPS</button></div></div>
+        <div class="gps-status-card"><div><span class="status-dot waiting" id="gpsDot"></span><strong id="gpsStatusText">GPS: waiting</strong></div><small id="gpsDetail">Tap Use my location. If GPS fails, the retailer buttons below still open Google Maps “near me” searches.</small></div>
         <div class="filterbar local-filter card"><label>Radius<select id="nearRadius"><option>5</option><option>10</option><option selected>25</option><option>50</option></select></label><label>Source<select id="sourceType"><option value="all">All sources</option><option value="returns">Return & Bin Stores</option><option value="liquidation">Liquidation / Overstock</option><option value="estate">Estate Sales</option><option value="garage">Garage / Yard Sales</option><option value="flea">Flea Markets</option><option value="thrift">Thrift Stores</option><option value="auction">Auctions</option><option value="clearance">Retail Clearance</option></select></label><button class="ghost" id="searchAreaBtn">Search this area</button></div>
+        <div class="card discovery-card">
+          <div class="section-head compact"><div><div class="eyebrow">WORKS WITHOUT THE MAP</div><h3>Find nearby sourcing</h3></div></div>
+          <p class="muted">One tap opens current Google Maps results. When GPS is available, your coordinates are included; otherwise Google Maps resolves “near me.”</p>
+          <div id="reliableDiscoveryButtons" class="discovery-grid"></div>
+        </div>
         <div class="map-card card">
           <div class="map-head"><div><h3>Live sourcing map</h3><p>GPS-centered map of mapped sourcing locations. Pan the map and tap <strong>Search this area</strong> to scan a different area.</p></div><span id="mapCount" class="live-badge">WAITING FOR GPS</span></div>
           <div id="sourcingMap" role="application" aria-label="Interactive map of nearby sourcing locations"></div>
           <div id="mapLegend" class="map-legend"></div>
         </div>
-        <div id="locationStatus" class="confidence-note">Location not requested yet. GPS requires permission and HTTPS when installed.</div>
+        <div id="locationStatus" class="confidence-note">Location not requested yet. GPS requires permission and HTTPS when installed.</div><div class="card diagnostics-card">
+          <div class="section-head compact"><div><div class="eyebrow">DIAGNOSTICS</div><h3>Near Me status</h3></div></div>
+          <div class="diagnostics-grid">
+            <div><span>HTTPS</span><strong id="diagHttps">Checking</strong></div>
+            <div><span>Permission</span><strong id="diagPermission">Checking</strong></div>
+            <div><span>GPS</span><strong id="diagGps">Waiting</strong></div>
+            <div><span>Map library</span><strong id="diagMap">Checking</strong></div>
+            <div><span>Mapped directory</span><strong id="diagDirectory">Optional</strong></div>
+          </div>
+          <p class="muted">The mapped directory is optional. It can fail without disabling retailer/category searches.</p>
+        </div>
         <div class="card treasure-card"><div><h3>Treasure Watches</h3><p>These terms are carried into estate/garage/flea discovery so you remember what to hunt for.</p></div><div class="inline-input"><input id="treasureInput" placeholder="sterling, watches, tools, toys..."/><button id="saveTreasureBtn" class="ghost">Save</button></div><div id="treasureChips" class="chips"></div></div>
         <div class="card route-card" id="routeCard">
           <div class="route-head"><div><h3>My Sourcing Route</h3><p id="routeSummary">No stops saved yet.</p></div><div class="actions"><button class="primary" id="openRouteBtn">Open route</button><button class="ghost" id="clearRouteBtn">Clear</button></div></div>

@@ -1,26 +1,20 @@
-# Arbitrage Radar — Release 1.6
+# Arbitrage Radar — Release 1.7
 
-Near Me reliability release.
+Near Me stability release.
 
-## What changed
-- Keeps the working GPS + Leaflet/OpenStreetMap map.
-- Adds a reliable GPS-aware "Search nearby sourcing" layer that does not depend on the failing structured directory endpoint.
-- One-tap current Google Maps searches for:
-  - Priority retailers: Walmart, TJ Maxx, Marshalls, Burlington, Ross, Ollie's, Lowe's, Home Depot, Target
-  - Return & bin stores
-  - Liquidation / overstock
-  - Thrift / resale
-  - Flea markets
-  - Estate sales
-  - Garage / yard sales
-  - Auctions
-- Search links use Google Maps URLs and do not require a Google Maps API key.
-- If automatic mapped-place discovery fails, the app now explains that GPS still works and directs the user to the reliable search layer rather than presenting the whole Near Me feature as broken.
-- Preserves My Sourcing Intelligence, Hunt Mode, inventory, routes, clearance data and existing local storage.
-- No retailer partnerships or private retailer API credentials required.
+## What is fixed
+- GPS runs from an explicit user tap and reports READY or FAILED instead of silently hanging.
+- GPS success shows coordinates and approximate accuracy.
+- Retry GPS button.
+- Nearby sourcing buttons appear before the embedded map and work independently of it.
+- Individual searches for Walmart, TJ Maxx, Marshalls, Burlington, Ross, Ollie's, Home Depot, Lowe's, Target, bin/return stores, liquidation, thrift, flea markets, estate sales, garage sales, and auctions.
+- If GPS fails, those buttons still open Google Maps using “near me.”
+- Diagnostics show HTTPS, location permission, GPS, map-library status, and optional mapped-directory status.
+- The mapped-place service is now explicitly optional; it cannot block Near Me.
+- Service worker cache bumped to 1.7 with immediate activation behavior.
 
-## Important
-The embedded map can only show pins supplied by a working mapped-place data source. Release 1.6 does not fabricate pins. The reliable fallback opens current Google Maps search results centered on the user's GPS location.
+## Deliberate limitation
+The app does not fabricate business pins. If the optional mapped directory cannot return businesses, the embedded map remains a location/base map while the Google Maps search buttons provide current business discovery.
 
 ## Update
 Upload everything inside this folder over the existing GitHub repository and commit to `main`.

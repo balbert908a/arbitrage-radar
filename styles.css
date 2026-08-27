@@ -49,3 +49,15 @@
 .discovery-btn small{color:#72efb2;white-space:nowrap}
 .discovery-btn:active{transform:scale(.99)}
 @media(max-width:640px){.discovery-grid{grid-template-columns:1fr}}
+
+.near-actions{display:flex;gap:9px;flex-wrap:wrap}
+.gps-status-card{margin:0 0 14px;padding:12px 14px;border:1px solid var(--border);border-radius:13px;background:rgba(255,255,255,.025)}
+.gps-status-card>div{display:flex;align-items:center;gap:8px}.gps-status-card small{display:block;color:var(--muted);margin-top:6px;line-height:1.4}
+.status-dot{width:10px;height:10px;border-radius:50%;display:inline-block;background:#ffd166}.status-dot.ok{background:#72efb2}.status-dot.error{background:#ff6b8a}
+.discovery-card{margin:14px 0}.discovery-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.discovery-btn{display:flex;justify-content:space-between;align-items:center;gap:10px;text-decoration:none;border:1px solid var(--border);border-radius:13px;padding:12px;color:var(--text);background:rgba(255,255,255,.025)}
+.discovery-btn small{color:#72efb2;white-space:nowrap}
+.diagnostics-card{margin:14px 0}.diagnostics-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.diagnostics-grid>div{border:1px solid var(--border);border-radius:11px;padding:10px;display:flex;justify-content:space-between;gap:10px}
+.diagnostics-grid span{color:var(--muted);font-size:12px}.diagnostics-grid strong{font-size:12px}
+@media(max-width:640px){.discovery-grid,.diagnostics-grid{grid-template-columns:1fr}}

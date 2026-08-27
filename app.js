@@ -458,7 +458,7 @@ renderTodaySources();renderTreasure();
 // Event-style sources (estate/garage sales) use current web/map searches because
 // there is no universal free structured event feed.
 
-const RELEASE_VERSION='1.1';
+const RELEASE_VERSION='1.7';
 let livePlaces=[];
 let routeStops=(()=>{try{return JSON.parse(localStorage.getItem('arbitrageRouteStops'))||[]}catch{return[]}})();
 function saveRoute(){localStorage.setItem('arbitrageRouteStops',JSON.stringify(routeStops));renderRoute();}
@@ -647,3 +647,94 @@ if(_fs) _fs.addEventListener('click',()=>{
   saveState();
   alert(state.settings.feedUrl?'Feed URL saved.':'Feed URL cleared.');
 });
+
+
+// ===== Release 1.7 Near Me stability controller =====
+(function(){
+  const byId=id=>document.getElementById(id);
+  const set=(id,v)=>{const e=byId(id);if(e)e.textContent=v;};
+  const categories=[
+    ['Walmart','Walmart'],['TJ Maxx','TJ Maxx'],['Marshalls','Marshalls'],
+    ['Burlington','Burlington'],['Ross','Ross Dress for Less'],
+    ["Ollie's","Ollie's Bargain Outlet"],['Home Depot','Home Depot'],
+    ["Lowe's","Lowe's"],['Target','Target'],['Return / bin stores','bin store returns liquidation'],
+    ['Liquidation / overstock','liquidation overstock closeout store'],
+    ['Thrift / resale','thrift resale consignment store'],['Flea markets','flea market'],
+    ['Estate sales','estate sales'],['Garage / yard sales','garage sales yard sales'],
+    ['Auctions','auction house']
+  ];
+  let stableGps=null;
+
+  function coords(){
+    if(stableGps) return stableGps;
+    if(typeof lastGps!=='undefined' && lastGps && Number.isFinite(+lastGps.latitude) && Number.isFinite(+lastGps.longitude))
+      return {lat:+lastGps.latitude,lon:+lastGps.longitude};
+    return null;
+  }
+  function mapsHref(q){
+    const c=coords();
+    const query=c?`${q} near ${c.lat.toFixed(5)},${c.lon.toFixed(5)}`:`${q} near me`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  }
+  function renderReliable(){
+    const el=byId('reliableDiscoveryButtons'); if(!el)return;
+    el.innerHTML=categories.map(([label,q])=>`<a class="discovery-btn" href="${mapsHref(q)}" target="_blank" rel="noopener"><strong>${label}</strong><small>Find near me ↗</small></a>`).join('');
+  }
+  function gpsState(kind,title,detail){
+    const dot=byId('gpsDot'); if(dot)dot.className='status-dot '+kind;
+    set('gpsStatusText',title);set('gpsDetail',detail);
+    set('diagGps',kind==='ok'?'OK':kind==='error'?'FAILED':'WAITING');
+  }
+  function diagnostics(){
+    set('diagHttps',location.protocol==='https:'?'OK':'REQUIRED');
+    set('diagMap',typeof L!=='undefined'?'LOADED':'FAILED');
+    if(!navigator.geolocation){set('diagPermission','UNAVAILABLE');gpsState('error','GPS: unavailable','This browser does not support geolocation.');return;}
+    if(navigator.permissions&&navigator.permissions.query){
+      navigator.permissions.query({name:'geolocation'}).then(r=>{
+        set('diagPermission',String(r.state).toUpperCase());
+        r.onchange=()=>set('diagPermission',String(r.state).toUpperCase());
+      }).catch(()=>set('diagPermission','UNKNOWN'));
+    }else set('diagPermission','ASK ON USE');
+  }
+  function centerBaseMap(lat,lon){
+    try{
+      if(typeof sourcingMap!=='undefined' && sourcingMap && sourcingMap.setView) sourcingMap.setView([lat,lon],12);
+      else if(typeof map!=='undefined' && map && map.setView) map.setView([lat,lon],12);
+    }catch(e){}
+  }
+  function requestGps(){
+    if(!navigator.geolocation){gpsState('error','GPS: unavailable','Geolocation is unavailable. Use the retailer buttons below.');return;}
+    gpsState('waiting','GPS: requesting…','Waiting up to 15 seconds for your phone.');
+    const status=byId('locationStatus'); if(status)status.textContent='Requesting your phone location…';
+    navigator.geolocation.getCurrentPosition(async pos=>{
+      const lat=pos.coords.latitude,lon=pos.coords.longitude;
+      stableGps={lat,lon};
+      try{lastGps={latitude:lat,longitude:lon};}catch(e){}
+      gpsState('ok','GPS: ready',`${lat.toFixed(5)}, ${lon.toFixed(5)} · accuracy about ${Math.round(pos.coords.accuracy||0)} m`);
+      set('diagPermission','GRANTED');
+      if(status)status.innerHTML='<strong>GPS ready.</strong> Nearby search buttons are ready. Mapped-place discovery is optional.';
+      centerBaseMap(lat,lon);
+      renderReliable();
+      // Attempt the existing mapped discovery, but never let it block the reliable controls.
+      try{
+        if(typeof renderLocalSources==='function'){
+          await renderLocalSources(lat,lon);
+          set('diagDirectory',Array.isArray(window.livePlaces)&&window.livePlaces.length?'OK':'OPTIONAL');
+        }
+      }catch(e){ set('diagDirectory','UNAVAILABLE'); }
+    },err=>{
+      const why={1:'Location permission was denied.',2:'Your phone could not determine a location.',3:'The location request timed out.'}[err.code]||err.message||'Unknown location error.';
+      gpsState('error','GPS: failed',why+' The buttons below still work using Google Maps “near me.”');
+      if(err.code===1)set('diagPermission','DENIED');
+      if(status)status.innerHTML=`<strong>GPS unavailable.</strong> ${why} Use the nearby search buttons below.`;
+      renderReliable();
+    },{enableHighAccuracy:true,timeout:15000,maximumAge:120000});
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    diagnostics();renderReliable();
+    const gps=byId('gpsBtn'),retry=byId('retryGpsBtn');
+    if(gps)gps.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();requestGps();},true);
+    if(retry)retry.addEventListener('click',e=>{e.preventDefault();requestGps();});
+  });
+})();
