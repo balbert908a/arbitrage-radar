@@ -9,6 +9,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <link rel="stylesheet" href="styles.css" />
   <title>Arbitrage Radar</title>
 </head>
@@ -26,9 +27,9 @@
       <section id="dashboard" class="view active">
         <div class="hero card">
           <div>
-            <span class="pill hot">COMPLETE V4</span>
+            <span class="pill hot">RELEASE 1.1</span>
             <h2>Know where to hunt before you leave.</h2>
-            <p>Clearance + Local Sourcing Radar + hunt mode + inventory + reseller intelligence.</p>
+            <p>Interactive sourcing map + expanded retailer intelligence + clearance + hunt mode + sold-comps links + routes + inventory.</p>
           </div>
           <button class="primary big" data-go="radar">Open Clearance Radar</button>
         </div>
@@ -115,7 +116,8 @@
               <input id="photoInput" type="file" accept="image/*" capture="environment" />
             </label>
             <div id="photoPreview" class="photo-preview hidden"></div>
-            <p class="micro">Photo mode captures the item for your record. Automatic visual identification can be connected to an image-recognition API later.</p>
+            <p class="micro">Photo mode keeps a visual record. Use keywords or UPC to pull current sold-listing evidence before buying.</p>
+            <div class="actions"><button class="ghost" id="soldCompsBtn">Search eBay sold comps</button><button class="ghost" id="activeListingsBtn">Check active listings</button></div>
           </div>
 
           <div class="card">
@@ -149,17 +151,26 @@
 
 
       <section id="nearby" class="view">
-        <div class="section-head stacked-mobile"><div><div class="eyebrow">GPS SOURCING</div><h2>Local Sourcing Radar</h2><p>Discover return & bin stores, liquidation, estate sales, garage sales, flea markets, thrift stores and auctions around your current location.</p></div><button class="primary" id="gpsBtn">Use my location</button></div>
+        <div class="section-head stacked-mobile"><div><div class="eyebrow">GPS SOURCING</div><h2>Local Sourcing Radar</h2><p>Discover return & bin stores, liquidation, estate sales, garage sales, flea markets, thrift stores and auctions around your current location.</p></div><button class="primary" id="gpsBtn">Scan local area</button></div>
         <div class="filterbar local-filter card"><label>Radius<select id="nearRadius"><option>5</option><option>10</option><option selected>25</option><option>50</option></select></label><label>Source<select id="sourceType"><option value="all">All sources</option><option value="returns">Return & Bin Stores</option><option value="liquidation">Liquidation / Overstock</option><option value="estate">Estate Sales</option><option value="garage">Garage / Yard Sales</option><option value="flea">Flea Markets</option><option value="thrift">Thrift Stores</option><option value="auction">Auctions</option><option value="clearance">Retail Clearance</option></select></label><button class="ghost" id="searchAreaBtn">Search this area</button></div>
+        <div class="map-card card">
+          <div class="map-head"><div><h3>Live sourcing map</h3><p>GPS-centered map of mapped sourcing locations. Pan the map and tap <strong>Search this area</strong> to scan a different area.</p></div><span id="mapCount" class="live-badge">WAITING FOR GPS</span></div>
+          <div id="sourcingMap" role="application" aria-label="Interactive map of nearby sourcing locations"></div>
+          <div id="mapLegend" class="map-legend"></div>
+        </div>
         <div id="locationStatus" class="confidence-note">Location not requested yet. GPS requires permission and HTTPS when installed.</div>
         <div class="card treasure-card"><div><h3>Treasure Watches</h3><p>These terms are carried into estate/garage/flea discovery so you remember what to hunt for.</p></div><div class="inline-input"><input id="treasureInput" placeholder="sterling, watches, tools, toys..."/><button id="saveTreasureBtn" class="ghost">Save</button></div><div id="treasureChips" class="chips"></div></div>
+        <div class="card route-card" id="routeCard">
+          <div class="route-head"><div><h3>My Sourcing Route</h3><p id="routeSummary">No stops saved yet.</p></div><div class="actions"><button class="primary" id="openRouteBtn">Open route</button><button class="ghost" id="clearRouteBtn">Clear</button></div></div>
+          <div id="routeStops" class="route-stops"></div>
+        </div>
         <div id="nearbyResults" class="nearby-grid"></div>
       </section>
       <section id="tools" class="view"><div class="section-head"><div><div class="eyebrow">RESELLER OS</div><h2>Intelligence Tools</h2><p>The complete workflow around the buy.</p></div></div><div class="tool-grid">
-      <div class="card tool-card"><h3>Sold Comps</h3><p>Sale price, competition, sell-through, fees, shipping and evidence confidence.</p><span class="status pending">Live connector next</span></div>
+      <div class="card tool-card"><h3>Sold Comps</h3><p>Jump directly to completed/sold eBay listings using the UPC or keywords from Hunt Mode.</p><button class="ghost" id="toolCompsBtn">Open sold comps</button></div>
       <div class="card tool-card"><h3>Unknown Treasure</h3><p>Capture marks, signatures, labels and model numbers without forcing an identification.</p><button class="ghost" data-go="hunt">Open camera</button></div>
       <div class="card tool-card"><h3>Auction Analyzer</h3><p>Track lot cost, buyer premium, expected resale and your maximum profitable bid.</p><span class="status pending">URL connector next</span></div>
-      <div class="card tool-card"><h3>Trip Planner</h3><p>Build a sourcing route from clearance and local opportunities, weighted by distance and expected profit.</p><button class="ghost" data-go="nearby">Find nearby</button></div>
+      <div class="card tool-card"><h3>Trip Planner</h3><p>Save live local businesses to a route and open the multi-stop trip in Google Maps.</p><button class="ghost" data-go="nearby">Build route</button></div>
       <div class="card tool-card"><h3>Profit & Death-Pile</h3><p>Track purchased inventory and make marginal buys less attractive as unlisted inventory grows.</p><button class="ghost" data-go="inventory">View buys</button></div>
       <div class="card tool-card"><h3>Personal Buy Model</h3><p>Future scoring learns from your actual sales, returns, shipping costs and time-to-sell.</p><span class="status pending">Learns from sales data</span></div></div></section>
       <section id="settings" class="view">
@@ -189,11 +200,11 @@
 
         <div class="card source-card">
           <h3>Data sources</h3>
-          <p>This working build supports manual finds and CSV imports immediately. Live retailer feeds plug into the same data model through source adapters, so we can add permitted APIs/providers without rebuilding the app.</p>
+          <p>This release supports manual/CSV clearance feeds, live GPS business discovery from OpenStreetMap data, current Maps/web event searches, eBay sold/completed searches, route planning and offline install. Retailer-specific price/inventory feeds can still be added later without changing the app structure.</p>
           <div class="source-row"><span>Manual / crowdsourced</span><span class="status ready">Ready</span></div>
           <div class="source-row"><span>CSV deal feed</span><span class="status ready">Ready</span></div>
-          <div class="source-row"><span>Retailer/API adapters</span><span class="status pending">Connector needed</span></div>
-          <div class="source-row"><span>eBay sold-comps API</span><span class="status pending">Credentials needed</span></div>
+          <div class="source-row"><span>Live local business discovery</span><span class="status ready">Ready</span></div>
+          <div class="source-row"><span>eBay sold/completed search</span><span class="status ready">Ready</span></div>
           <div class="source-row"><span>Offline app shell</span><span class="status ready">Ready</span></div>
         </div>
       </section>
@@ -255,6 +266,7 @@
   </dialog>
 
   <input id="csvInput" type="file" accept=".csv,text/csv" class="hidden" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="app.js"></script>
 </body>
 </html>

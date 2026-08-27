@@ -19,6 +19,32 @@ const defaults = {
 };
 
 
+
+const retailerCatalog = [
+  {name:'Home Depot',mode:'live-store-possible'},
+  {name:'Walmart',mode:'live-store-possible'},
+  {name:"Lowe's",mode:'live-store-possible'},
+  {name:'Target',mode:'live-store-possible'},
+  {name:'Dollar General',mode:'in-store-hunt'},
+  {name:'TJ Maxx',mode:'online-clearance-lead'},
+  {name:'Marshalls',mode:'online-clearance-lead'},
+  {name:'Burlington',mode:'online-clearance-lead'},
+  {name:'Ross Dress for Less',mode:'in-store-hunt'},
+  {name:"Ollie's Bargain Outlet",mode:'in-store-hunt'},
+  {name:'Five Below',mode:'in-store-hunt'},
+  {name:'Dollar Tree',mode:'in-store-hunt'},
+  {name:'Family Dollar',mode:'in-store-hunt'},
+  {name:'Walgreens',mode:'in-store-hunt'},
+  {name:'CVS',mode:'in-store-hunt'},
+  {name:"Macy's",mode:'online-clearance-lead'},
+  {name:"Kohl's",mode:'online-clearance-lead'},
+  {name:'Best Buy',mode:'online-clearance-lead'},
+  {name:'Staples',mode:'online-clearance-lead'},
+  {name:'Office Depot',mode:'online-clearance-lead'},
+  {name:'Tractor Supply',mode:'in-store-hunt'},
+  {name:'Harbor Freight',mode:'in-store-hunt'}
+];
+
 const sourceCatalog = [
   {id:'returns',name:'Return & Bin Stores',icon:'📦',priority:95,queries:['bin store','return store','Amazon returns store','returns liquidation store','liquidation bins'],why:'High-variance returned/overstock inventory; restock day and bin-price schedule can matter more than lowest-price day.'},
   {id:'liquidation',name:'Liquidation / Overstock',icon:'🏷️',priority:90,queries:['liquidation store','overstock store','liquidation warehouse','closeout store'],why:'Retail returns, closeouts and shelf pulls can create deep discounts on shippable merchandise.'},
@@ -27,7 +53,7 @@ const sourceCatalog = [
   {id:'flea',name:'Flea Markets',icon:'🧺',priority:82,queries:['flea market','swap meet'],why:'Many sellers in one stop; useful for collectibles, tools, vintage goods and repeat sourcing relationships.'},
   {id:'thrift',name:'Thrift Stores',icon:'♻️',priority:80,queries:['thrift store','charity thrift store','resale shop'],why:'Steady replenishment and broad categories; best when paired with Hunt Mode and sold comps.'},
   {id:'auction',name:'Auctions',icon:'🔨',priority:88,queries:['auction house','liquidation auction','estate auction'],why:'Lots can contain large value gaps, but buyer premium and lot-level risk must be included.'},
-  {id:'clearance',name:'Retail Clearance',icon:'🏬',priority:86,queries:['Home Depot','Walmart','Lowes','Target','Dollar General'],why:'Structured products and barcodes make resale math easier; local markdowns and inventory can vary by store.'}
+  {id:'clearance',name:'Retail Clearance',icon:'🏬',priority:86,queries:['TJ Maxx','Marshalls','Burlington','Ross Dress for Less',"Ollie's Bargain Outlet",'Home Depot','Walmart',"Lowe's",'Target','Dollar General','Five Below','Dollar Tree','Family Dollar','Walgreens','CVS',"Macy's","Kohl's",'Best Buy','Staples','Office Depot','Tractor Supply','Harbor Freight'],why:'Structured products and barcodes make resale math easier. TJ Maxx/Marshalls/Burlington online markdowns are leads, not proof of local shelf price; other chains may be in-store Hunt Mode only.'}
 ];
 
 function getTreasureTerms(){
@@ -80,7 +106,7 @@ function renderMetrics(){
 
 function retailerOptions(){
   const current = $('#retailerFilter').value;
-  const retailers=[...new Set(state.deals.map(d=>d.retailer))].sort();
+  const retailers=[...new Set([...retailerCatalog.map(r=>r.name),...state.deals.map(d=>d.retailer)])].sort((a,b)=>a.localeCompare(b));
   $('#retailerFilter').innerHTML='<option value="all">All retailers</option>'+retailers.map(r=>`<option>${escapeHtml(r)}</option>`).join('');
   if(retailers.includes(current)) $('#retailerFilter').value=current;
 }
@@ -291,7 +317,7 @@ function gpsSearch(){
   },err=>status.textContent=`Location unavailable: ${err.message}. Radar and Hunt Mode still work without GPS.` ,{enableHighAccuracy:true,timeout:10000,maximumAge:300000});
 }
 $('#gpsBtn')?.addEventListener('click',gpsSearch);
-$('#searchAreaBtn')?.addEventListener('click',()=>{if(lastGps)renderLocalSources(lastGps.latitude,lastGps.longitude); else gpsSearch();});
+$('#searchAreaBtn')?.addEventListener('click',async()=>{const center=(typeof mapSearchCenter!=='undefined'&&mapSearchCenter)||lastGps;if(center){lastGps={latitude:center.latitude,longitude:center.longitude};await renderLocalSources(center.latitude,center.longitude);}else gpsSearch();});
 $('#nearRadius')?.addEventListener('change',()=>{if(lastGps)renderLocalSources(lastGps.latitude,lastGps.longitude);});
 $('#sourceType')?.addEventListener('change',()=>{if(lastGps)renderLocalSources(lastGps.latitude,lastGps.longitude);});
 $('#saveTreasureBtn')?.addEventListener('click',()=>{
@@ -300,3 +326,188 @@ $('#saveTreasureBtn')?.addEventListener('click',()=>{
 });
 renderTodaySources();renderTreasure();
 
+
+// ===== Arbitrage Radar Release 1.0 additions =====
+// Live local discovery uses OpenStreetMap/Overpass data in the browser.
+// Event-style sources (estate/garage sales) use current web/map searches because
+// there is no universal free structured event feed.
+
+const RELEASE_VERSION='1.1';
+let livePlaces=[];
+let routeStops=(()=>{try{return JSON.parse(localStorage.getItem('arbitrageRouteStops'))||[]}catch{return[]}})();
+function saveRoute(){localStorage.setItem('arbitrageRouteStops',JSON.stringify(routeStops));renderRoute();}
+function rad(n){return n*Math.PI/180}
+function milesBetween(a,b,c,d){const R=3958.8,dl=rad(c-a),dn=rad(d-b);const x=Math.sin(dl/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+function osmCenter(el){return {lat:el.lat??el.center?.lat,lon:el.lon??el.center?.lon};}
+function classifyPlace(tags={}){
+  const text=`${tags.name||''} ${tags.shop||''} ${tags.amenity||''} ${tags.description||''}`.toLowerCase();
+  if(/bin store|returns?|amazon return|liquidation bin|pallet/.test(text)) return 'returns';
+  if(/liquidat|overstock|closeout|outlet/.test(text)) return 'liquidation';
+  if(/flea|swap meet|marketplace/.test(text)) return 'flea';
+  if(/auction/.test(text)) return 'auction';
+  if(/thrift|charity|second.?hand|resale|goodwill|salvation army/.test(text)) return 'thrift';
+  if(/home depot|walmart|lowe|target|dollar general|tj maxx|t\.?j\.? maxx|marshalls|burlington|ross dress|ollie|five below|dollar tree|family dollar|walgreens|cvs|macy|kohl|best buy|staples|office depot|tractor supply|harbor freight|department_store/.test(text)) return 'clearance';
+  return 'thrift';
+}
+function sourceById(id){return sourceCatalog.find(x=>x.id===id)||sourceCatalog.find(x=>x.id==='thrift');}
+function addressFrom(tags={}){
+  const parts=[tags['addr:housenumber'],tags['addr:street'],tags['addr:city'],tags['addr:state']].filter(Boolean);
+  return parts.join(' ')||tags['addr:full']||'Address available in Maps';
+}
+function placeKey(p){return `${p.name}|${Number(p.lat).toFixed(5)}|${Number(p.lon).toFixed(5)}`}
+function addRouteStop(place){
+  if(routeStops.some(x=>placeKey(x)===placeKey(place)))return;
+  if(routeStops.length>=8){alert('Route is limited to 8 saved stops for a reliable mobile Maps handoff.');return;}
+  routeStops.push({name:place.name,lat:place.lat,lon:place.lon,address:place.address||'',source:place.source});saveRoute();
+}
+function renderRoute(){
+  const el=$('#routeStops'),sum=$('#routeSummary');if(!el||!sum)return;
+  sum.textContent=routeStops.length?`${routeStops.length} stop${routeStops.length===1?'':'s'} saved. Open them as one sourcing trip.`:'No stops saved yet.';
+  el.innerHTML=routeStops.length?routeStops.map((x,i)=>`<div class="route-stop"><div><strong>${i+1}. ${escapeHtml(x.name)}</strong><br><small>${escapeHtml(sourceById(x.source)?.name||'Source')} · ${escapeHtml(x.address||'')}</small></div><button class="ghost route-remove" data-i="${i}">Remove</button></div>`).join(''):'';
+  $$('.route-remove').forEach(b=>b.onclick=()=>{routeStops.splice(+b.dataset.i,1);saveRoute()});
+}
+function openSavedRoute(){
+  if(!routeStops.length)return alert('Save at least one local opportunity to your route first.');
+  if(routeStops.length===1){window.open(`https://www.google.com/maps/dir/?api=1&destination=${routeStops[0].lat},${routeStops[0].lon}`,'_blank');return;}
+  const origin=lastGps?`${lastGps.latitude},${lastGps.longitude}`:'';
+  const destination=routeStops[routeStops.length-1];
+  const waypoints=routeStops.slice(0,-1).map(x=>`${x.lat},${x.lon}`).join('|');
+  const url=`https://www.google.com/maps/dir/?api=1${origin?`&origin=${encodeURIComponent(origin)}`:''}&destination=${destination.lat},${destination.lon}&waypoints=${encodeURIComponent(waypoints)}&travelmode=driving`;
+  window.open(url,'_blank');
+}
+$('#openRouteBtn')?.addEventListener('click',openSavedRoute);
+$('#clearRouteBtn')?.addEventListener('click',()=>{routeStops=[];saveRoute()});
+renderRoute();
+
+function ebayQuery(){return ($('#huntBarcode')?.value||$('#huntName')?.value||'').trim();}
+function openEbaySearch(sold){
+  const q=ebayQuery();if(!q)return alert('Enter an item name or UPC in Hunt Mode first.');
+  const extra=sold?'&LH_Sold=1&LH_Complete=1':'';
+  window.open(`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(q)}${extra}&_sop=13`,'_blank');
+}
+$('#soldCompsBtn')?.addEventListener('click',()=>openEbaySearch(true));
+$('#activeListingsBtn')?.addEventListener('click',()=>openEbaySearch(false));
+$('#toolCompsBtn')?.addEventListener('click',()=>{navigate('hunt');setTimeout(()=>openEbaySearch(true),50)});
+
+function overpassQuery(lat,lon,radiusMiles){
+  const meters=Math.min(Number(radiusMiles||25),50)*1609.344;
+  return `[out:json][timeout:25];(
+    nwr["shop"~"second_hand|charity|outlet|department_store"](around:${Math.round(meters)},${lat},${lon});
+    nwr["amenity"="marketplace"](around:${Math.round(meters)},${lat},${lon});
+    nwr["name"~"thrift|resale|second hand|liquidation|overstock|closeout|bin store|returns|flea|swap meet|auction|Goodwill|Salvation Army|Home Depot|Walmart|Lowe|Target|Dollar General|TJ Maxx|T.J. Maxx|Marshalls|Burlington|Ross Dress|Ollie|Five Below|Dollar Tree|Family Dollar|Walgreens|CVS|Macy|Kohl|Best Buy|Staples|Office Depot|Tractor Supply|Harbor Freight",i](around:${Math.round(meters)},${lat},${lon});
+  );out center tags;`;
+}
+async function fetchLivePlaces(lat,lon,radius){
+  const query=overpassQuery(lat,lon,radius);
+  const endpoints=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+  let lastErr;
+  for(const endpoint of endpoints){
+    try{
+      const controller=new AbortController();const t=setTimeout(()=>controller.abort(),18000);
+      const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:'data='+encodeURIComponent(query),signal:controller.signal});clearTimeout(t);
+      if(!r.ok)throw new Error(`Live directory returned ${r.status}`);
+      const data=await r.json();
+      const seen=new Set();
+      return (data.elements||[]).map(el=>{
+        const c=osmCenter(el),tags=el.tags||{};if(!c.lat||!c.lon)return null;
+        const name=tags.name||tags.brand||'Local sourcing location';const source=classifyPlace(tags);
+        return {name,source,lat:c.lat,lon:c.lon,distance:milesBetween(lat,lon,c.lat,c.lon),address:addressFrom(tags),hours:tags.opening_hours||'',website:tags.website||tags['contact:website']||''};
+      }).filter(Boolean).filter(p=>{const k=placeKey(p);if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>a.distance-b.distance).slice(0,60);
+    }catch(e){lastErr=e;}
+  }
+  throw lastErr||new Error('Live local directory unavailable');
+}
+function placeCard(p){
+  const src=sourceById(p.source);
+  return `<article class="card place-card"><div class="source-head"><div class="source-icon">${src.icon}</div><div><h3>${escapeHtml(p.name)}</h3><div class="meta"><span class="live-badge">LIVE DIRECTORY</span> · <span class="distance">${p.distance.toFixed(1)} mi</span> · ${escapeHtml(src.name)}</div></div></div><div class="address">${escapeHtml(p.address)}</div>${p.hours?`<div class="hours">Hours: ${escapeHtml(p.hours)}</div>`:''}<div class="actions" style="margin-top:12px"><button class="primary place-route" data-k="${encodeURIComponent(placeKey(p))}">Directions</button><button class="ghost place-save" data-k="${encodeURIComponent(placeKey(p))}">+ Route</button>${p.website?`<button class="ghost place-web" data-k="${encodeURIComponent(placeKey(p))}">Website</button>`:''}</div></article>`;
+}
+function eventDiscoveryCards(lat,lon,radius,selected){
+  const ids=selected==='all'?['estate','garage']:['estate','garage'].includes(selected)?[selected]:[];
+  if(!ids.length)return '';
+  return `<div class="source-section-title"><h3>Current sale listings</h3><p>Estate and garage sales change too quickly for a reliable static directory. These searches use your current GPS area.</p></div>`+ids.map(id=>sourceCard(sourceById(id),lat,lon,radius)).join('');
+}
+function bindLivePlaceButtons(){
+  $$('.place-route').forEach(b=>b.onclick=()=>{const k=decodeURIComponent(b.dataset.k),p=livePlaces.find(x=>placeKey(x)===k);if(p)window.open(`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`,'_blank')});
+  $$('.place-save').forEach(b=>b.onclick=()=>{const k=decodeURIComponent(b.dataset.k),p=livePlaces.find(x=>placeKey(x)===k);if(p){addRouteStop(p);b.textContent='Saved'}});
+  $$('.place-web').forEach(b=>b.onclick=()=>{const k=decodeURIComponent(b.dataset.k),p=livePlaces.find(x=>placeKey(x)===k);if(p?.website)window.open(p.website,'_blank')});
+  bindLocalSearchButtons();
+}
+
+let sourcingMap=null,userMapMarker=null,mapLayerGroup=null,mapSearchCenter=null;
+const sourceMarkerClass={returns:'returns',liquidation:'liquidation',estate:'estate',garage:'garage',flea:'flea',thrift:'thrift',auction:'auction',clearance:'clearance'};
+function ensureMap(lat,lon){
+  const el=$('#sourcingMap'); if(!el)return;
+  if(typeof L==='undefined'){
+    el.innerHTML='<div class="map-fallback">Interactive map library could not load. The ranked list and Directions buttons still work.</div>';
+    return;
+  }
+  if(!sourcingMap){
+    sourcingMap=L.map(el,{zoomControl:true}).setView([lat,lon],11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(sourcingMap);
+    mapLayerGroup=L.layerGroup().addTo(sourcingMap);
+    sourcingMap.on('moveend',()=>{const c=sourcingMap.getCenter();mapSearchCenter={latitude:c.lat,longitude:c.lng};const b=$('#searchAreaBtn');if(b)b.textContent='Search this map area';});
+  } else sourcingMap.setView([lat,lon],sourcingMap.getZoom()||11);
+  mapSearchCenter={latitude:lat,longitude:lon};
+  if(userMapMarker)sourcingMap.removeLayer(userMapMarker);
+  userMapMarker=L.circleMarker([lat,lon],{radius:8,weight:3,color:'#ffffff',fillColor:'#7cf5b8',fillOpacity:1}).addTo(sourcingMap).bindPopup('<strong>Your search center</strong>');
+  setTimeout(()=>sourcingMap.invalidateSize(),80);
+}
+function markerIcon(source){
+  if(typeof L==='undefined')return null;
+  return L.divIcon({className:'radar-map-marker-wrap',html:`<div class="radar-map-marker ${sourceMarkerClass[source]||'thrift'}"></div>`,iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-13]});
+}
+function renderMapPlaces(lat,lon,selected){
+  ensureMap(lat,lon); if(!sourcingMap||!mapLayerGroup)return;
+  mapLayerGroup.clearLayers();
+  const allowed=selected==='all'?livePlaces:livePlaces.filter(p=>p.source===selected);
+  allowed.forEach(p=>{
+    const src=sourceById(p.source);
+    const dir=`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`;
+    const popup=`<div class="map-popup"><strong>${escapeHtml(p.name)}</strong><br><span>${p.distance.toFixed(1)} mi · ${escapeHtml(src.name)}</span><br><a href="${dir}" target="_blank" rel="noopener">Directions</a></div>`;
+    L.marker([p.lat,p.lon],{icon:markerIcon(p.source),title:p.name}).addTo(mapLayerGroup).bindPopup(popup);
+  });
+  const count=$('#mapCount');if(count)count.textContent=`${allowed.length} MAPPED`;
+  const legend=$('#mapLegend');if(legend){
+    const ids=[...new Set(allowed.map(p=>p.source))];
+    legend.innerHTML=ids.length?ids.map(id=>`<span class="legend-item"><i class="legend-dot ${sourceMarkerClass[id]||'thrift'}"></i>${escapeHtml(sourceById(id).name)}</span>`).join(''):'<span class="micro">No mapped matches for this filter yet.</span>';
+  }
+}
+
+function renderLiveResults(lat,lon,radius,selected){
+  renderMapPlaces(lat,lon,selected);
+  const allowed=selected==='all'?livePlaces:livePlaces.filter(p=>p.source===selected);
+  let html='';
+  if(allowed.length){html+=`<div class="source-section-title"><h3>Places found near you</h3><p>${allowed.length} live directory result${allowed.length===1?'':'s'} matched this view. Distance is straight-line; use Directions for actual driving distance.</p></div>${allowed.map(placeCard).join('')}`;}
+  else if(!['estate','garage'].includes(selected)){html+='<div class="data-note">No structured local-directory matches were found for this source. Use the live search cards below; some liquidation/bin businesses are not categorized consistently in map databases.</div>';}
+  html+=eventDiscoveryCards(lat,lon,radius,selected);
+  // Keep discovery cards for categories that are often inconsistently tagged.
+  const discoveryIds=selected==='all'?['returns','liquidation','flea','auction','clearance']:(!['estate','garage'].includes(selected)?[selected]:[]);
+  if(discoveryIds.length){html+=`<div class="source-section-title"><h3>Broader live searches</h3><p>Use these when a business or event is missing from the structured directory.</p></div>`+discoveryIds.map(id=>sourceCard(sourceById(id),lat,lon,radius)).join('');}
+  $('#nearbyResults').innerHTML=html;bindLivePlaceButtons();
+}
+
+// Override V4's local renderer with release behavior.
+async function renderLocalSources(latitude,longitude){
+  const radius=$('#nearRadius').value,selected=$('#sourceType').value,status=$('#locationStatus');
+  $('#nearbyResults').innerHTML='<div class="card loading-card"><strong>Scanning the local area…</strong><p>Checking live map-directory data and preparing current event searches.</p></div>';
+  status.innerHTML=`<strong>GPS ready.</strong> Scanning a ${radius}-mile sourcing radius.`;
+  try{
+    livePlaces=await fetchLivePlaces(latitude,longitude,radius);
+    status.innerHTML=`<strong>Live local scan complete.</strong> Found ${livePlaces.length} mapped sourcing locations. Event searches remain live links because estate/garage listings change constantly.`;
+  }catch(err){
+    livePlaces=[];
+    status.innerHTML=`<strong>GPS ready.</strong> <span class="danger-text">Structured local directory could not be reached.</span> Current Maps/web searches are still available below.`;
+  }
+  renderLiveResults(latitude,longitude,radius,selected);
+}
+async function gpsSearch(){
+  const status=$('#locationStatus');
+  if(!navigator.geolocation){status.textContent='Geolocation is not supported by this browser.';return;}
+  status.textContent='Getting your location…';
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const {latitude,longitude}=pos.coords;lastGps={latitude,longitude};await renderLocalSources(latitude,longitude);
+  },err=>status.textContent=`Location unavailable: ${err.message}. Radar and Hunt Mode still work without GPS.`,{enableHighAccuracy:true,timeout:12000,maximumAge:180000});
+}
+
+// Update installed-app text without relying on network.
+if(window.matchMedia('(display-mode: standalone)').matches){const b=$('#installBtn');if(b)b.textContent='Installed';}
