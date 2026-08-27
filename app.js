@@ -7,14 +7,7 @@ const daysAgo = n => new Date(Date.now()-n*86400000).toISOString();
 
 const defaults = {
   settings: { minProfit:15, minRoi:100, maxBuy:50, fee:13.25, radius:35, travel:0.35, categories:'toys, tools, electronics, collectibles, small home goods', exclude:'oversized, freight' },
-  deals: [
-    {id:'d1',retailer:'Home Depot',store:'Dickson City #4120',item:'Milwaukee M12 LED Work Light',category:'tools',regularPrice:49.97,clearancePrice:12.03,resalePrice:39.99,shipping:6,quantity:3,miles:14.2,confidence:'High',upc:'045242006755',newMarkdown:true,lastSeen:daysAgo(0)},
-    {id:'d2',retailer:'Walmart',store:'Dickson City Supercenter',item:'LEGO Creator 3-in-1 Set',category:'toys',regularPrice:39.97,clearancePrice:12,resalePrice:34.95,shipping:7,quantity:5,miles:13.1,confidence:'High',upc:'673419000001',newMarkdown:true,lastSeen:daysAgo(0)},
-    {id:'d3',retailer:'Lowe\'s',store:'Scranton',item:'Kobalt 24V Tool Accessory',category:'tools',regularPrice:59.98,clearancePrice:17.99,resalePrice:47.5,shipping:8,quantity:2,miles:16.5,confidence:'Medium',upc:'885911000002',newMarkdown:false,lastSeen:daysAgo(1)},
-    {id:'d4',retailer:'Home Depot',store:'Honesdale #4184',item:'Seasonal LED Fixture - penny candidate',category:'home',regularPrice:34.97,clearancePrice:0.01,resalePrice:24.99,shipping:6.5,quantity:1,miles:21.8,confidence:'Low',upc:'000000000001',newMarkdown:false,lastSeen:daysAgo(2)},
-    {id:'d5',retailer:'Target',store:'Dickson City',item:'NECA Collectible Figure',category:'collectibles',regularPrice:34.99,clearancePrice:10.49,resalePrice:37.99,shipping:6.25,quantity:2,miles:13.5,confidence:'Medium',upc:'634482000003',newMarkdown:true,lastSeen:daysAgo(0)},
-    {id:'d6',retailer:'Dollar General',store:'Lake Ariel area',item:'Discontinued small appliance',category:'home',regularPrice:25,clearancePrice:5,resalePrice:27.99,shipping:7,quantity:2,miles:6.2,confidence:'Medium',upc:'000000000006',newMarkdown:false,lastSeen:daysAgo(1)}
-  ],
+  deals: [],
   inventory: [], watch: []
 };
 
@@ -72,10 +65,20 @@ function renderTodaySources(){
   $$('.source-tile').forEach(b=>b.addEventListener('click',()=>{ const sel=$('#sourceType'); if(sel) sel.value=b.dataset.source; }));
 }
 
+const LEGACY_DEMO_IDS = new Set(['d1','d2','d3','d4','d5','d6']);
+function normalizeDeal(d){
+  return {...d, source:d.source || 'MANUAL'};
+}
 function loadState(){
   try {
     const saved = JSON.parse(localStorage.getItem('arbitrageRadarState'));
-    return saved ? {settings:{...defaults.settings,...saved.settings}, deals:saved.deals||[], inventory:saved.inventory||[], watch:saved.watch||[]} : structuredClone(defaults);
+    if(!saved) return structuredClone(defaults);
+    const cleanedDeals=(saved.deals||[])
+      .filter(d=>!LEGACY_DEMO_IDS.has(String(d.id)))
+      .map(normalizeDeal);
+    const migrated={settings:{...defaults.settings,...saved.settings}, deals:cleanedDeals, inventory:saved.inventory||[], watch:saved.watch||[]};
+    localStorage.setItem('arbitrageRadarState', JSON.stringify(migrated));
+    return migrated;
   } catch { return structuredClone(defaults); }
 }
 let state = loadState();
@@ -116,7 +119,7 @@ function dealCard(d){
   const penny=d.clearancePrice<=.01;
   return `<article class="deal-card" data-id="${d.id}">
     <div class="deal-main">
-      <div class="deal-topline"><span class="retailer">${escapeHtml(d.retailer)}</span><span class="store">${escapeHtml(d.store)} · ${d.miles} mi</span><span class="confidence ${d.confidence.toLowerCase()}">${d.confidence}</span>${penny?'<span class="penny-badge">PENNY WATCH</span>':''}${d.newMarkdown?'<span class="markdown-badge">NEW MARKDOWN</span>':''}</div>
+      <div class="deal-topline"><span class="retailer">${escapeHtml(d.retailer)}</span><span class="data-source ${String(d.source||'MANUAL').toLowerCase()}">${escapeHtml(d.source||'MANUAL')}</span><span class="store">${escapeHtml(d.store)} · ${d.miles} mi</span><span class="confidence ${d.confidence.toLowerCase()}">${d.confidence}</span>${penny?'<span class="penny-badge">PENNY WATCH</span>':''}${d.newMarkdown?'<span class="markdown-badge">NEW MARKDOWN</span>':''}</div>
       <div class="deal-title">${escapeHtml(d.item)}</div>
       <div class="deal-stats">
         <span class="stat">Buy <b>${money(d.clearancePrice)}</b></span><span class="stat">Was ${money(d.regularPrice)}</span><span class="stat">Markdown <b>${pct(c.markdown)}</b></span><span class="stat">Resale ${money(d.resalePrice)}</span><span class="stat">Profit <b>${money(c.profit)}</b></span><span class="stat">ROI <b>${pct(c.roi)}</b></span><span class="stat">Qty ~${d.quantity}</span>
@@ -187,7 +190,7 @@ $('#addDealBtn').onclick=()=>$('#dealDialog').showModal();
 $('#submitDeal').onclick=e=>{
   e.preventDefault();
   const f=new FormData($('#dealForm'));
-  const d={id:'d'+Date.now(),retailer:f.get('retailer'),store:f.get('store'),item:f.get('item'),category:f.get('category')||'',regularPrice:+f.get('regularPrice'),clearancePrice:+f.get('clearancePrice'),resalePrice:+f.get('resalePrice'),shipping:+f.get('shipping')||0,quantity:+f.get('quantity')||0,miles:+f.get('miles')||0,confidence:f.get('confidence'),upc:f.get('upc')||'',newMarkdown:f.get('newMarkdown')==='on',lastSeen:nowISO()};
+  const d={id:'d'+Date.now(),retailer:f.get('retailer'),store:f.get('store'),item:f.get('item'),category:f.get('category')||'',regularPrice:+f.get('regularPrice'),clearancePrice:+f.get('clearancePrice'),resalePrice:+f.get('resalePrice'),shipping:+f.get('shipping')||0,quantity:+f.get('quantity')||0,miles:+f.get('miles')||0,confidence:f.get('confidence'),upc:f.get('upc')||'',newMarkdown:f.get('newMarkdown')==='on',lastSeen:nowISO(),source:'MANUAL'};
   state.deals.push(d);saveState();$('#dealDialog').close();$('#dealForm').reset();renderAll();
 };
 
@@ -195,7 +198,10 @@ $('#saveSettingsBtn').onclick=()=>{
   state.settings={minProfit:+$('#settingMinProfit').value,minRoi:+$('#settingMinRoi').value,maxBuy:+$('#settingMaxBuy').value,fee:+$('#settingFee').value,radius:+$('#settingRadius').value,travel:+$('#settingTravel').value,categories:$('#settingCategories').value,exclude:$('#settingExclude').value};
   saveState();renderAll();$('#saveSettingsBtn').textContent='Saved';setTimeout(()=>$('#saveSettingsBtn').textContent='Save settings',1200);
 };
-$('#resetDemoBtn').onclick=()=>{state=structuredClone(defaults);saveState();renderAll()};
+$('#clearDealsBtn').onclick=()=>{
+  if(!confirm('Clear all manual/imported clearance opportunities? Your buys, watchlist and settings will be kept.')) return;
+  state.deals=[]; saveState(); renderAll();
+};
 
 function huntCalc(){
   const buy=+$('#buyPrice').value||0,sale=+$('#salePrice').value||0,ship=+$('#shippingCost').value||0,other=+$('#otherCost').value||0;
@@ -239,7 +245,7 @@ $('#csvInput').onchange=async e=>{
   const required=['retailer','store','item','regularPrice','clearancePrice','resalePrice'];
   if(!required.every(h=>headers.includes(h)))return alert(`CSV needs: ${required.join(', ')}`);
   const idx=Object.fromEntries(headers.map((h,i)=>[h,i]));
-  rows.slice(1).filter(r=>r.some(Boolean)).forEach(r=>state.deals.push({id:'d'+Date.now()+Math.random(),retailer:r[idx.retailer]||'',store:r[idx.store]||'',item:r[idx.item]||'',category:r[idx.category]||'',regularPrice:+r[idx.regularPrice]||0,clearancePrice:+r[idx.clearancePrice]||0,resalePrice:+r[idx.resalePrice]||0,shipping:+r[idx.shipping]||0,quantity:+r[idx.quantity]||1,miles:+r[idx.miles]||0,confidence:r[idx.confidence]||'Medium',upc:r[idx.upc]||'',newMarkdown:/^(true|1|yes)$/i.test(r[idx.newMarkdown]||''),lastSeen:r[idx.lastSeen]||nowISO()}));
+  rows.slice(1).filter(r=>r.some(Boolean)).forEach(r=>state.deals.push({id:'d'+Date.now()+Math.random(),retailer:r[idx.retailer]||'',store:r[idx.store]||'',item:r[idx.item]||'',category:r[idx.category]||'',regularPrice:+r[idx.regularPrice]||0,clearancePrice:+r[idx.clearancePrice]||0,resalePrice:+r[idx.resalePrice]||0,shipping:+r[idx.shipping]||0,quantity:+r[idx.quantity]||1,miles:+r[idx.miles]||0,confidence:r[idx.confidence]||'Medium',upc:r[idx.upc]||'',newMarkdown:/^(true|1|yes)$/i.test(r[idx.newMarkdown]||''),lastSeen:r[idx.lastSeen]||nowISO(),source:'IMPORTED'}));
   saveState();renderAll(); e.target.value='';
 };
 function parseCSV(text){let out=[],row=[],field='',quote=false;for(let i=0;i<text.length;i++){let ch=text[i];if(ch==='"'){if(quote&&text[i+1]==='"'){field+='"';i++;}else quote=!quote;}else if(ch===','&&!quote){row.push(field);field='';}else if((ch==='\n'||ch==='\r')&&!quote){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(field);out.push(row);row=[];field='';}else field+=ch;}if(field.length||row.length){row.push(field);out.push(row)}return out;}
