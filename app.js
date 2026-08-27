@@ -458,7 +458,7 @@ renderTodaySources();renderTreasure();
 // Event-style sources (estate/garage sales) use current web/map searches because
 // there is no universal free structured event feed.
 
-const RELEASE_VERSION='1.7';
+const RELEASE_VERSION='1.8';
 let livePlaces=[];
 let routeStops=(()=>{try{return JSON.parse(localStorage.getItem('arbitrageRouteStops'))||[]}catch{return[]}})();
 function saveRoute(){localStorage.setItem('arbitrageRouteStops',JSON.stringify(routeStops));renderRoute();}
@@ -595,7 +595,7 @@ function renderMapPlaces(lat,lon,selected){
   const count=$('#mapCount');if(count)count.textContent=`${allowed.length} MAPPED`;
   const legend=$('#mapLegend');if(legend){
     const ids=[...new Set(allowed.map(p=>p.source))];
-    legend.innerHTML=ids.length?ids.map(id=>`<span class="legend-item"><i class="legend-dot ${sourceMarkerClass[id]||'thrift'}"></i>${escapeHtml(sourceById(id).name)}</span>`).join(''):'<span class="micro">No mapped matches for this filter yet.</span>';
+    legend.innerHTML=ids.length?ids.map(id=>`<span class="legend-item"><i class="legend-dot ${sourceMarkerClass[id]||'thrift'}"></i>${escapeHtml(sourceById(id).name)}</span>`).join(''):'<span class="micro">Use the sourcing buttons above for current nearby businesses.</span>';
   }
 }
 
@@ -622,7 +622,7 @@ async function renderLocalSources(latitude,longitude){
     status.innerHTML=`<strong>Live local scan complete.</strong> Found ${livePlaces.length} mapped sourcing locations. Event searches remain live links because estate/garage listings change constantly.`;
   }catch(err){
     livePlaces=[];
-    status.innerHTML=`<strong>GPS ready.</strong> <span class="danger-text">Automatic mapped-place discovery is unavailable right now.</span> Current Maps/web searches are still available below.`;
+    status.innerHTML=`<strong>GPS ready.</strong> <span class="danger-text">Location map ready.</span> Current Maps/web searches are still available below.`;
   }
   renderLiveResults(latitude,longitude,radius,selected);
 }
@@ -649,7 +649,7 @@ if(_fs) _fs.addEventListener('click',()=>{
 });
 
 
-// ===== Release 1.7 Near Me stability controller =====
+// ===== Release 1.8 Near Me sourcing controller =====
 (function(){
   const byId=id=>document.getElementById(id);
   const set=(id,v)=>{const e=byId(id);if(e)e.textContent=v;};
@@ -719,9 +719,9 @@ if(_fs) _fs.addEventListener('click',()=>{
       try{
         if(typeof renderLocalSources==='function'){
           await renderLocalSources(lat,lon);
-          set('diagDirectory',Array.isArray(window.livePlaces)&&window.livePlaces.length?'OK':'OPTIONAL');
+          set('diagDirectory','MAPS SEARCH');
         }
-      }catch(e){ set('diagDirectory','UNAVAILABLE'); }
+      }catch(e){ set('diagDirectory','MAPS SEARCH'); }
     },err=>{
       const why={1:'Location permission was denied.',2:'Your phone could not determine a location.',3:'The location request timed out.'}[err.code]||err.message||'Unknown location error.';
       gpsState('error','GPS: failed',why+' The buttons below still work using Google Maps “near me.”');

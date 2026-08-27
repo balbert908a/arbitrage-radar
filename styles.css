@@ -61,3 +61,12 @@
 .diagnostics-grid>div{border:1px solid var(--border);border-radius:11px;padding:10px;display:flex;justify-content:space-between;gap:10px}
 .diagnostics-grid span{color:var(--muted);font-size:12px}.diagnostics-grid strong{font-size:12px}
 @media(max-width:640px){.discovery-grid,.diagnostics-grid{grid-template-columns:1fr}}
+
+/* Release 1.8: embedded map is location context, not a business-directory promise */
+#mapCount,.map-count,.mapped-count,#mappedCount{display:none!important}
+.map-card .empty,.map-card .empty-state,.map-card .no-results{display:none!important}
+
+/* Keep all Near Me content clear of fixed bottom navigation */
+main,.view,.screen,.page-section{padding-bottom:max(150px,calc(120px + env(safe-area-inset-bottom)))}
+#nearMe,.near-me,.nearby-section{padding-bottom:max(170px,calc(140px + env(safe-area-inset-bottom)))}
+.discovery-card,.diagnostics-card,.sourcing-history-card{scroll-margin-bottom:150px}
