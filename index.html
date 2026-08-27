@@ -27,7 +27,7 @@
       <section id="dashboard" class="view active">
         <div class="hero card">
           <div>
-            <span class="pill hot">RELEASE 1.1</span>
+            <span class="pill hot">RELEASE 1.2</span>
             <h2>Know where to hunt before you leave.</h2>
             <p>Interactive sourcing map + expanded retailer intelligence + clearance + hunt mode + sold-comps links + routes + inventory.</p>
           </div>
@@ -199,7 +199,19 @@
         </div>
 
         <div class="card source-card">
-          <h3>Data sources</h3><div class="production-note"><strong>Production mode:</strong> no demo opportunities are loaded. Clearance cards appear only from manual entries or imported feeds; live local results are separately sourced and labeled.</div>
+          
+<div class="card">
+  <h3>Live clearance feed</h3>
+  <p class="muted">Connect a JSON or CSV feed you control or are permitted to use. LIVE results are timestamped and kept separate from manual/imported data. Retailer websites are not scraped by this app.</p>
+  <label>Feed URL
+    <input id="feedUrlInput" type="url" placeholder="https://example.com/clearance-feed.json">
+  </label>
+  <div class="row-actions">
+    <button id="saveFeedUrlBtn" type="button">Save feed URL</button>
+    <button id="refreshFeedBtn" type="button">Refresh feed now</button>
+  </div>
+</div>
+<h3>Data sources</h3><div class="production-note"><strong>Production mode:</strong> no demo opportunities are loaded. Clearance cards appear only from manual entries or imported feeds; live local results are separately sourced and labeled.</div>
           <p>This release supports manual/CSV clearance feeds, live GPS business discovery from OpenStreetMap data, current Maps/web event searches, eBay sold/completed searches, route planning and offline install. Retailer-specific price/inventory feeds can still be added later without changing the app structure.</p>
           <div class="source-row"><span>Manual / crowdsourced</span><span class="status ready">Ready</span></div>
           <div class="source-row"><span>CSV deal feed</span><span class="status ready">Ready</span></div>

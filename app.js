@@ -170,6 +170,53 @@ function makeListing(x){
   return `${title}\n\nPre-owned/new item as shown. Please review photos for exact condition and included components.\n\nUPC: ${x.barcode||'N/A'}\nTarget price: ${money(x.salePrice)}\n\nShips carefully packed.`;
 }
 
+
+async function refreshClearanceFeed(){
+  const url=(state.settings.feedUrl||'').trim();
+  if(!url){ alert('Add a clearance feed URL in Tools first. This app will not invent live retailer data.'); return; }
+  try{
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const ct=res.headers.get('content-type')||'';
+    let rows=[];
+    if(ct.includes('application/json') || url.toLowerCase().endsWith('.json')){
+      const data=await res.json();
+      rows=Array.isArray(data)?data:(data.deals||[]);
+    }else{
+      const text=await res.text();
+      const lines=text.trim().split(/\r?\n/);
+      if(lines.length<2) throw new Error('Feed has no rows');
+      const headers=lines[0].split(',').map(s=>s.trim());
+      rows=lines.slice(1).map(line=>{
+        const vals=line.split(',').map(s=>s.trim());
+        return Object.fromEntries(headers.map((h,i)=>[h,vals[i]??'']));
+      });
+    }
+    const now=nowISO();
+    const mapped=rows.map((r,i)=>({
+      id:String(r.id||`live-${Date.now()}-${i}`),
+      retailer:r.retailer||r.store||'Unknown retailer',
+      store:r.storeName||r.location||r.store||'',
+      item:r.item||r.title||r.product||'Unknown item',
+      buy:+(r.buy??r.price??r.clearancePrice??0),
+      was:+(r.was??r.regularPrice??r.msrp??0),
+      resale:+(r.resale??r.estimatedResale??0),
+      distance:+(r.distance??0),
+      confidence:r.confidence||'Medium',
+      qty:+(r.qty??r.quantity??0),
+      penny:/^(true|1|yes)$/i.test(String(r.penny??'')) || +(r.buy??r.price??0)===0.01,
+      newMarkdown:/^(true|1|yes)$/i.test(String(r.newMarkdown??'')),
+      lastSeen:r.lastSeen||r.updatedAt||now,
+      source:'LIVE'
+    })).filter(d=>d.buy>=0 && d.item);
+    state.deals=mapped;
+    saveState(); renderAll();
+    alert(`Loaded ${mapped.length} live/imported feed opportunities.`);
+  }catch(err){
+    alert(`Could not refresh feed: ${err.message}`);
+  }
+}
+
 function renderAll(){ renderMetrics(); renderDeals(); renderInventory(); renderSettings(); renderTodaySources(); renderTreasure(); bindDynamic(); }
 function bindDynamic(){
   $$('.route-btn').forEach(b=>b.onclick=()=>window.open(`https://www.google.com/maps/search/?api=1&query=${b.dataset.store}`,'_blank'));
@@ -517,3 +564,13 @@ async function gpsSearch(){
 
 // Update installed-app text without relying on network.
 if(window.matchMedia('(display-mode: standalone)').matches){const b=$('#installBtn');if(b)b.textContent='Installed';}
+
+const _rf=$('#refreshFeedBtn'); if(_rf) _rf.addEventListener('click',refreshClearanceFeed);
+
+const _fi=$('#feedUrlInput'), _fs=$('#saveFeedUrlBtn');
+if(_fi) _fi.value=state.settings.feedUrl||'';
+if(_fs) _fs.addEventListener('click',()=>{
+  state.settings.feedUrl=(_fi?.value||'').trim();
+  saveState();
+  alert(state.settings.feedUrl?'Feed URL saved.':'Feed URL cleared.');
+});

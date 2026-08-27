@@ -1,18 +1,19 @@
-# Arbitrage Radar — Release 1.1.1
+# Arbitrage Radar — Release 1.2
 
-Production cleanup release.
+Live-data foundation release.
 
-## What changed
-- Removed all built-in/sample clearance opportunities.
-- Automatically purges the six legacy V4 demo deal records from existing installs.
-- Manual clearance entries are labeled `MANUAL`.
-- CSV-imported clearance entries are labeled `IMPORTED`.
-- Live local sourcing results remain separate from clearance cards.
-- Empty Radar/Home states now remain honestly empty until real data is entered/imported.
-- Replaced “Restore demo data” with “Clear clearance data.”
-- Preserves settings, purchased inventory, watchlist, treasure terms, and saved route data.
-- Bumped the service-worker cache so installed PWAs update.
+## Changes
+- Corrects the visible release badge.
+- Keeps production clearance data empty until a real source exists.
+- Adds a configurable LIVE clearance feed connector for permitted JSON/CSV sources.
+- Feed results are labeled LIVE and carry last-seen timestamps.
+- Does not scrape retailer websites or fabricate local price/inventory.
+- Keeps GPS/local sourcing, Hunt Mode, eBay sold-search links, routes, inventory, manual entries and CSV imports.
+- Preserves existing local data and settings.
+
+## Live feed fields
+Supported fields include: `id`, `retailer`, `storeName`/`location`, `item`/`title`, `buy`/`price`,
+`was`/`regularPrice`, `resale`, `distance`, `confidence`, `qty`, `penny`, `newMarkdown`, `lastSeen`.
 
 ## Update
-Upload everything in this folder over the existing GitHub repository files and commit to `main`.
-GitHub Pages will redeploy automatically. Close/reopen the installed app; if needed, refresh the HTTPS site once in Chrome.
+Upload everything inside this folder over the existing GitHub repository and commit to `main`.
