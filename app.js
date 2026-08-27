@@ -103,6 +103,50 @@ function calcDeal(d){
   return {fee,profit,roi,markdown,score,freshnessDays};
 }
 
+
+function normText(v){ return String(v||'').trim().toLowerCase(); }
+function sourcingStats(){
+  const groups={};
+  (state.inventory||[]).forEach(x=>{
+    const retailer=(x.retailer||'').trim(), store=(x.store||'').trim();
+    if(!retailer && !store) return;
+    const key=`${normText(retailer)}|${normText(store)}`;
+    if(!groups[key]) groups[key]={retailer:retailer||'Independent / other',store,buys:0,profit:0,spend:0};
+    groups[key].buys++;
+    groups[key].profit += Number(x.profit||0);
+    groups[key].spend += Number(x.buyPrice||0);
+  });
+  return Object.values(groups).map(g=>({
+    ...g,
+    avgProfit:g.buys?g.profit/g.buys:0,
+    roi:g.spend?g.profit/g.spend*100:0,
+    score:Math.round(Math.min(100, g.buys*12 + Math.max(0,g.avgProfit)*1.6 + Math.min(35,Math.max(0,g.roi)*.12)))
+  })).sort((a,b)=>b.score-a.score || b.profit-a.profit);
+}
+function historyScoreForPlace(place){
+  const name=normText(place?.name), address=normText(place?.address);
+  let best=0;
+  sourcingStats().forEach(s=>{
+    const r=normText(s.retailer), st=normText(s.store);
+    const retailerMatch=r && (name.includes(r)||r.includes(name));
+    const storeMatch=st && (name.includes(st)||address.includes(st));
+    if(retailerMatch || storeMatch) best=Math.max(best,s.score);
+  });
+  return best;
+}
+function renderSourcingHistory(){
+  const stats=sourcingStats(), el=$('#sourcingHistory'), priority=$('#personalPriority');
+  const empty='<div class="empty-state">No sourcing history yet. In Hunt Mode, add the retailer/location and tap <strong>Save as bought</strong>. Radar will learn which places actually make you money.</div>';
+  if(el) el.innerHTML=stats.length?stats.slice(0,8).map((s,i)=>`<div class="history-row"><div><strong>${i+1}. ${escapeHtml(s.retailer)}</strong>${s.store?` <span class="muted">· ${escapeHtml(s.store)}</span>`:''}<small>${s.buys} buy${s.buys===1?'':'s'} · ${money(s.profit)} est. profit · ${Math.round(s.roi)}% ROI</small></div><div class="history-score">${s.score}</div></div>`).join(''):empty;
+  if(priority){
+    if(!stats.length) priority.innerHTML='<strong>Personal sourcing:</strong> Start saving real buys in Hunt Mode and TODAY will learn which retailers deserve your time.';
+    else {
+      const s=stats[0];
+      priority.innerHTML=`<div><div class="eyebrow">PERSONAL PRIORITY</div><strong>${escapeHtml(s.retailer)}${s.store?` · ${escapeHtml(s.store)}`:''}</strong><p>${s.buys} recorded buy${s.buys===1?'':'s'} · ${money(s.profit)} estimated profit. Your sourcing score: <b>${s.score}</b>.</p></div>`;
+    }
+  }
+}
+
 function renderMetrics(){
   const qualified = state.deals.map(d=>({...d,...calcDeal(d)})).filter(d=>d.profit>=state.settings.minProfit && d.roi>=state.settings.minRoi && d.miles<=state.settings.radius);
   const pennies = state.deals.filter(d=>d.clearancePrice<=.01).length;
@@ -165,7 +209,7 @@ function renderSettings(){
 function renderInventory(){
   $('#inventoryList').innerHTML = state.inventory.length ? state.inventory.slice().reverse().map(x=>{
     const listing=makeListing(x);
-    return `<article class="inventory-card"><div class="title">${escapeHtml(x.item||'Unidentified item')}</div><div class="inventory-meta">Bought ${money(x.buyPrice)} · target ${money(x.salePrice)} · est. profit ${money(x.profit)} · ${new Date(x.created).toLocaleDateString()}</div><div class="listing-box">${escapeHtml(listing)}</div><div class="actions" style="margin-top:10px"><button class="ghost copy-listing" data-id="${x.id}">Copy listing starter</button><button class="ghost remove-inventory" data-id="${x.id}">Remove</button></div></article>`;
+    return `<article class="inventory-card"><div class="title">${escapeHtml(x.item||'Unidentified item')}</div>${(x.retailer||x.store)?`<div class="inventory-source">${escapeHtml(x.retailer||'Source')}${x.store?` · ${escapeHtml(x.store)}`:''}</div>`:''}<div class="inventory-meta">Bought ${money(x.buyPrice)} · target ${money(x.salePrice)} · est. profit ${money(x.profit)} · ${new Date(x.created).toLocaleDateString()}</div><div class="listing-box">${escapeHtml(listing)}</div><div class="actions" style="margin-top:10px"><button class="ghost copy-listing" data-id="${x.id}">Copy listing starter</button><button class="ghost remove-inventory" data-id="${x.id}">Remove</button></div></article>`;
   }).join('') : '<div class="empty">Nothing bought yet. When Hunt Mode says BUY, save the item here.</div>';
 }
 
@@ -223,7 +267,7 @@ async function refreshClearanceFeed(){
   }
 }
 
-function renderAll(){ renderMetrics(); renderDeals(); renderInventory(); renderSettings(); renderTodaySources(); renderTreasure(); bindDynamic(); }
+function renderAll(){ renderMetrics(); renderDeals(); renderInventory(); renderSettings(); renderTodaySources(); renderTreasure(); renderSourcingHistory(); bindDynamic(); }
 function bindDynamic(){
   $$('.route-btn').forEach(b=>b.onclick=()=>window.open(`https://www.google.com/maps/search/?api=1&query=${b.dataset.store}`,'_blank'));
   $$('.copy-listing').forEach(b=>b.onclick=()=>{const x=state.inventory.find(i=>i.id===b.dataset.id); navigator.clipboard?.writeText(makeListing(x)); b.textContent='Copied'; setTimeout(()=>b.textContent='Copy listing starter',1200)});
@@ -269,7 +313,7 @@ $('#calculateBtn').onclick=huntCalc;
 
 $('#saveInventoryBtn').onclick=()=>{
   const c=huntCalc();
-  state.inventory.push({id:'i'+Date.now(),item:$('#huntName').value||'Unidentified item',barcode:$('#huntBarcode').value,buyPrice:c.buy,salePrice:c.sale,shipping:c.ship,other:c.other,profit:c.profit,created:nowISO()});saveState();renderInventory();bindDynamic();$('#saveInventoryBtn').textContent='Saved';setTimeout(()=>$('#saveInventoryBtn').textContent='Save as bought',1200);
+  state.inventory.push({id:'i'+Date.now(),item:$('#huntName').value||'Unidentified item',barcode:$('#huntBarcode').value,retailer:$('#huntRetailer')?.value||'',store:$('#huntStore')?.value||'',buyPrice:c.buy,salePrice:c.sale,shipping:c.ship,other:c.other,profit:c.profit,created:nowISO()});saveState();renderInventory();bindDynamic();$('#saveInventoryBtn').textContent='Saved';setTimeout(()=>$('#saveInventoryBtn').textContent='Save as bought',1200);
 };
 $('#saveWatchBtn').onclick=()=>{state.watch.push({id:'w'+Date.now(),item:$('#huntName').value,barcode:$('#huntBarcode').value,buyPrice:+$('#buyPrice').value,salePrice:+$('#salePrice').value,created:nowISO()});saveState();$('#saveWatchBtn').textContent='Watching';setTimeout(()=>$('#saveWatchBtn').textContent='Watch item',1200)};
 
@@ -478,7 +522,7 @@ async function fetchLivePlaces(lat,lon,radius){
 }
 function placeCard(p){
   const src=sourceById(p.source);
-  return `<article class="card place-card"><div class="source-head"><div class="source-icon">${src.icon}</div><div><h3>${escapeHtml(p.name)}</h3><div class="meta"><span class="live-badge">LIVE DIRECTORY</span> · <span class="distance">${p.distance.toFixed(1)} mi</span> · ${escapeHtml(src.name)}</div></div></div><div class="address">${escapeHtml(p.address)}</div>${p.hours?`<div class="hours">Hours: ${escapeHtml(p.hours)}</div>`:''}<div class="actions" style="margin-top:12px"><button class="primary place-route" data-k="${encodeURIComponent(placeKey(p))}">Directions</button><button class="ghost place-save" data-k="${encodeURIComponent(placeKey(p))}">+ Route</button>${p.website?`<button class="ghost place-web" data-k="${encodeURIComponent(placeKey(p))}">Website</button>`:''}</div></article>`;
+  return `<article class="card place-card"><div class="source-head"><div class="source-icon">${src.icon}</div><div><h3>${escapeHtml(p.name)}</h3><div class="meta"><span class="live-badge">LIVE DIRECTORY</span> · <span class="distance">${p.distance.toFixed(1)} mi</span> · ${escapeHtml(src.name)}</div></div></div><div class="address">${escapeHtml(p.address)}</div>${historyScoreForPlace(p)?`<div class="personal-match">★ Your sourcing score: ${historyScoreForPlace(p)}</div>`:''}${p.hours?`<div class="hours">Hours: ${escapeHtml(p.hours)}</div>`:''}<div class="actions" style="margin-top:12px"><button class="primary place-route" data-k="${encodeURIComponent(placeKey(p))}">Directions</button><button class="ghost place-save" data-k="${encodeURIComponent(placeKey(p))}">+ Route</button>${p.website?`<button class="ghost place-web" data-k="${encodeURIComponent(placeKey(p))}">Website</button>`:''}</div></article>`;
 }
 function eventDiscoveryCards(lat,lon,radius,selected){
   const ids=selected==='all'?['estate','garage']:['estate','garage'].includes(selected)?[selected]:[];

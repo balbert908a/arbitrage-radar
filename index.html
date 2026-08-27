@@ -27,7 +27,7 @@
       <section id="dashboard" class="view active">
         <div class="hero card">
           <div>
-            <span class="pill hot">RELEASE 1.3</span>
+            <span class="pill hot">RELEASE 1.4</span>
             <h2>Know where to hunt before you leave.</h2>
             <p>Interactive sourcing map + expanded retailer intelligence + clearance + hunt mode + sold-comps links + routes + inventory.</p>
           </div>
@@ -35,6 +35,7 @@
         </div>
 
         <div class="metrics" id="metrics"></div>
+        <div id="personalPriority" class="card personal-priority"></div>
 
         <div class="section-head">
           <div>
@@ -112,6 +113,20 @@
             <label>Item / keywords
               <input id="huntName" placeholder="e.g. Milwaukee M12 light" />
             </label>
+            <div class="two-col">
+              <label>Retailer / source
+                <input id="huntRetailer" list="retailerNames" placeholder="e.g. Walmart, TJ Maxx" />
+              </label>
+              <label>Store / location
+                <input id="huntStore" placeholder="e.g. Dickson City" />
+              </label>
+            </div>
+            <datalist id="retailerNames">
+              <option>Walmart</option><option>TJ Maxx</option><option>Marshalls</option>
+              <option>Burlington</option><option>Ross Dress for Less</option><option>Ollie's Bargain Outlet</option>
+              <option>Home Depot</option><option>Lowe's</option><option>Target</option><option>Dollar General</option>
+              <option>Five Below</option><option>Dollar Tree</option><option>Walgreens</option><option>CVS</option>
+            </datalist>
             <label>Photo
               <input id="photoInput" type="file" accept="image/*" capture="environment" />
             </label>
@@ -202,8 +217,8 @@
           
 
 <div class="card">
-  <h3>Retailer intelligence</h3>
-  <p class="muted">Arbitrage Radar separates store-confirmed data from leads that still need in-store verification.</p>
+  <h3>Retailer strategy</h3>
+  <p class="muted">No retailer partnership is required. Radar combines your own sourcing history, GPS destinations, permitted feeds, and in-store verification.</p>
   <div class="evidence-legend">
     <span class="evidence live-store">LIVE STORE PRICE</span>
     <span class="evidence lead">ONLINE CLEARANCE LEAD</span>
@@ -212,14 +227,14 @@
     <span class="evidence verify">VERIFY IN STORE</span>
   </div>
   <div class="retailer-grid">
-    <div><strong>Lowe's</strong><small>Live API-ready: store price / inventory / aisle when credentials are connected.</small></div>
+    <div><strong>Lowe's</strong><small>GPS + Hunt Mode + your own sourcing history. No partner onboarding required.</small></div>
     <div><strong>Walmart</strong><small>Priority retailer. GPS + Hunt Mode + permitted feed connector; no fake shelf inventory.</small></div>
     <div><strong>TJ Maxx / Marshalls</strong><small>Online clearance intelligence + verify in store.</small></div>
     <div><strong>Burlington</strong><small>Clearance leads + verify local price/availability.</small></div>
     <div><strong>Ollie's</strong><small>Buyout/deal leads + local verification.</small></div>
     <div><strong>Ross</strong><small>GPS destination + Hunt Mode.</small></div>
     <div><strong>Home Depot / Target</strong><small>Hunt Mode + permitted external intelligence only.</small></div>
-    <div><strong>eBay</strong><small>Active-comp API-ready + sold-search evidence.</small></div>
+    <div><strong>eBay</strong><small>Sold/completed search evidence + active-listing search from Hunt Mode.</small></div>
   </div>
 </div>
 <div class="card">

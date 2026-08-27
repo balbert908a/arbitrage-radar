@@ -31,3 +31,14 @@
 .retailer-grid>div{border:1px solid var(--border);border-radius:12px;padding:11px;min-width:0}
 .retailer-grid strong{display:block;margin-bottom:4px}.retailer-grid small{display:block;color:var(--muted);line-height:1.35}
 @media(max-width:640px){.retailer-grid{grid-template-columns:1fr}}
+
+.sourcing-history-card{margin:16px 0}
+.sourcing-history{display:grid;gap:8px}
+.history-row{display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:11px 12px}
+.history-row small{display:block;color:var(--muted);margin-top:4px}
+.history-score{font-size:22px;font-weight:900;min-width:42px;text-align:center}
+.personal-priority{margin:14px 0}
+.personal-priority p{margin:5px 0 0;color:var(--muted)}
+.personal-match{margin-top:8px;color:#72efb2;font-size:12px;font-weight:800}
+.inventory-source{font-size:12px;color:#72efb2;margin:4px 0 7px}
+.empty-state{color:var(--muted);padding:12px;border:1px dashed var(--border);border-radius:12px;line-height:1.45}

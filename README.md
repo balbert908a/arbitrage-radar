@@ -1,32 +1,20 @@
-# Arbitrage Radar — Release 1.3
+# Arbitrage Radar — Release 1.4
 
-Retailer intelligence + connector architecture release.
+Personal sourcing intelligence release.
 
-## Walmart is included
-Walmart is a priority retailer in Release 1.3. The app supports Walmart in GPS/Near Me, Hunt Mode,
-manual/imported clearance intelligence, and the permitted live-feed connector. It deliberately does
-not claim Walmart store-level shelf inventory/pricing unless a legitimate source supplies it.
+## What changed
+- No retailer partner onboarding or private retailer credentials required.
+- Hunt Mode now records the retailer/source and store/location with every saved buy.
+- "My Sourcing Intelligence" ranks stores from your own recorded buys, estimated profit and ROI.
+- Nearby sourcing results show a personal sourcing score when they match a retailer/location with buying history.
+- Home screen surfaces your current personal-priority sourcing location.
+- Walmart, TJ Maxx, Marshalls, Burlington, Ross, Ollie's, Lowe's, Home Depot, Target and other retailers remain first-class sourcing destinations.
+- eBay sold/completed and active-listing searches remain available from Hunt Mode.
+- Google Maps handoff remains key-free; Maps URLs do not require a Google API key.
+- No dummy clearance inventory and no claims of retailer shelf price/quantity without real evidence.
 
-## Evidence model
-- LIVE STORE PRICE
-- ONLINE CLEARANCE LEAD
-- LOCAL SOURCE
-- MANUAL
-- VERIFY IN STORE
-
-## Retailer strategy
-- Lowe's: official store-price/inventory/aisle API-ready.
-- Walmart: priority permitted-feed + GPS/Hunt workflow.
-- TJ Maxx / Marshalls: online clearance leads + verify in store.
-- Burlington: clearance leads + verify in store.
-- Ollie's: deal/buyout leads + local verification.
-- Ross: GPS + Hunt Mode.
-- Home Depot / Target: Hunt Mode + permitted external intelligence.
-- eBay: active-comp API-ready + sold-search evidence.
-
-## Security
-Private API credentials must not be embedded in this GitHub Pages PWA. Real authenticated API
-connections should be proxied through a small secure backend.
+## Workflow
+GPS / TODAY → choose promising sourcing stops → Hunt Mode → sold comps → BUY/PASS → save the buy with retailer/location → Radar learns which stores deserve higher priority.
 
 ## Update
 Upload everything inside this folder over the existing GitHub repository and commit to `main`.
