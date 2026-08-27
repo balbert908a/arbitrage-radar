@@ -70,3 +70,20 @@
 main,.view,.screen,.page-section{padding-bottom:max(150px,calc(120px + env(safe-area-inset-bottom)))}
 #nearMe,.near-me,.nearby-section{padding-bottom:max(170px,calc(140px + env(safe-area-inset-bottom)))}
 .discovery-card,.diagnostics-card,.sourcing-history-card{scroll-margin-bottom:150px}
+
+/* Release 2.0 recommendation-first Near Me */
+.v2-filter{grid-template-columns:1fr 1fr auto!important;align-items:end}
+.v2-category-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.v2-cat-btn{position:relative;z-index:3;pointer-events:auto;min-height:118px;background:rgba(18,25,39,.95);border:1px solid var(--line);border-radius:16px;padding:14px;color:var(--text);text-align:left;cursor:pointer;touch-action:manipulation}
+.v2-cat-btn span{font-size:25px;display:block}.v2-cat-btn strong{display:block;margin:8px 0 3px}.v2-cat-btn small{color:var(--muted)}
+.v2-recommendations{display:grid;gap:12px}.v2-rec-card{display:grid;grid-template-columns:46px 1fr;gap:14px}
+.v2-rank{width:38px;height:38px;border-radius:12px;background:#0d1421;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px}
+.v2-rec-main{min-width:0}.v2-rec-top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px}
+.v2-evidence{font-size:10px;font-weight:900;letter-spacing:.06em;color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:4px 7px}.v2-score{font-weight:900;font-size:20px}
+.v2-address,.v2-hours,.v2-proof{font-size:12px;color:var(--muted);margin:5px 0}.v2-proof{font-style:italic}
+.v2-action{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;min-height:44px;position:relative;z-index:4;pointer-events:auto}
+.v2-retailer-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.v2-retailer-btn{position:relative;z-index:4;pointer-events:auto;display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--text);text-decoration:none;background:#0d1421;min-height:48px;touch-action:manipulation}.v2-retailer-btn small{color:var(--accent)}
+.view{padding-bottom:190px!important}
+@media(max-width:760px){.v2-category-grid{grid-template-columns:1fr 1fr}.v2-retailer-grid{grid-template-columns:1fr 1fr}.v2-filter{grid-template-columns:1fr 1fr!important}.v2-filter button{grid-column:1/-1}}
+@media(max-width:430px){.v2-retailer-grid{grid-template-columns:1fr}.v2-rec-card{grid-template-columns:38px 1fr}}

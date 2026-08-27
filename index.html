@@ -27,7 +27,7 @@
       <section id="dashboard" class="view active">
         <div class="hero card">
           <div>
-            <span class="pill hot">RELEASE 1.8</span>
+            <span class="pill hot">RELEASE 2.0</span>
             <h2>Know where to hunt before you leave.</h2>
             <p>Interactive sourcing map + expanded retailer intelligence + clearance + hunt mode + sold-comps links + routes + inventory.</p>
           </div>
@@ -48,7 +48,7 @@
 
         <div class="section-head stacked-mobile">
           <div><div class="eyebrow">TODAY</div><h3>Local sourcing channels</h3><p>GPS discovery across the places most likely to hide underpriced inventory.</p></div>
-          <button class="primary" data-go="nearby">Search around me</button>
+          <button class="primary" data-go="nearby">Find local sourcing</button>
         </div>
         <div id="todaySources" class="source-strip"></div>
       </section>
@@ -165,38 +165,68 @@
       </section>
 
 
-      <section id="nearby" class="view">
-        <div class="section-head stacked-mobile"><div><div class="eyebrow">GPS SOURCING</div><h2>Local Sourcing Radar</h2><p>Find sourcing locations around you. Nearby searches work even if the embedded map or directory service fails.</p></div><div class="near-actions"><button class="primary" id="gpsBtn" type="button">Use my location</button><button class="ghost" id="retryGpsBtn" type="button">Retry GPS</button></div></div>
-        <div class="gps-status-card"><div><span class="status-dot waiting" id="gpsDot"></span><strong id="gpsStatusText">GPS: waiting</strong></div><small id="gpsDetail">Tap Use my location. If GPS fails, the retailer buttons below still open Google Maps “near me” searches.</small></div>
-        <div class="filterbar local-filter card"><label>Radius<select id="nearRadius"><option>5</option><option>10</option><option selected>25</option><option>50</option></select></label><label>Source<select id="sourceType"><option value="all">All sources</option><option value="returns">Return & Bin Stores</option><option value="liquidation">Liquidation / Overstock</option><option value="estate">Estate Sales</option><option value="garage">Garage / Yard Sales</option><option value="flea">Flea Markets</option><option value="thrift">Thrift Stores</option><option value="auction">Auctions</option><option value="clearance">Retail Clearance</option></select></label><button class="ghost" id="searchAreaBtn">Search this area</button></div>
-        <div class="card discovery-card">
-          <div class="section-head compact"><div><div class="eyebrow">WORKS WITHOUT THE MAP</div><h3>Find nearby sourcing</h3></div></div>
-          <p class="muted">One tap opens current Google Maps results. When GPS is available, your coordinates are included; otherwise Google Maps resolves “near me.”</p>
-          <div id="reliableDiscoveryButtons" class="discovery-grid"></div>
-        </div>
-        <div class="map-card card">
-          <div class="map-head"><div><h3>Your location map</h3><p>Shows your GPS position and search area. Nearby business discovery is handled by the sourcing buttons above.</p></div><span id="mapCount" class="live-badge">WAITING FOR GPS</span></div>
-          <div id="sourcingMap" role="application" aria-label="Interactive map of nearby sourcing locations"></div>
-          <div id="mapLegend" class="map-legend"></div>
-        </div>
-        <div id="locationStatus" class="confidence-note">Location not requested yet. GPS requires permission and HTTPS when installed.</div><div class="card diagnostics-card">
-          <div class="section-head compact"><div><div class="eyebrow">DIAGNOSTICS</div><h3>Near Me status</h3></div></div>
-          <div class="diagnostics-grid">
-            <div><span>HTTPS</span><strong id="diagHttps">Checking</strong></div>
-            <div><span>Permission</span><strong id="diagPermission">Checking</strong></div>
-            <div><span>GPS</span><strong id="diagGps">Waiting</strong></div>
-            <div><span>Map library</span><strong id="diagMap">Checking</strong></div>
-            <div><span>Business discovery</span><strong id="diagDirectory">MAPS SEARCH</strong></div>
-          </div>
-          <p class="muted">Nearby business discovery uses the sourcing buttons above; the embedded map is for location context.</p>
-        </div>
-        <div class="card treasure-card"><div><h3>Treasure Watches</h3><p>These terms are carried into estate/garage/flea discovery so you remember what to hunt for.</p></div><div class="inline-input"><input id="treasureInput" placeholder="sterling, watches, tools, toys..."/><button id="saveTreasureBtn" class="ghost">Save</button></div><div id="treasureChips" class="chips"></div></div>
-        <div class="card route-card" id="routeCard">
-          <div class="route-head"><div><h3>My Sourcing Route</h3><p id="routeSummary">No stops saved yet.</p></div><div class="actions"><button class="primary" id="openRouteBtn">Open route</button><button class="ghost" id="clearRouteBtn">Clear</button></div></div>
-          <div id="routeStops" class="route-stops"></div>
-        </div>
-        <div id="nearbyResults" class="nearby-grid"></div>
-      </section>
+      
+<section id="nearby" class="view">
+  <div class="section-head stacked-mobile">
+    <div>
+      <div class="eyebrow">GPS SOURCING</div>
+      <h2>Local Sourcing Radar</h2>
+      <p>Get ranked places and sourcing moves around your current location. Recommendations come first; maps are used for directions.</p>
+    </div>
+    <button class="primary big" id="v2LocateBtn" type="button">Find opportunities near me</button>
+  </div>
+
+  <div id="v2GpsStatus" class="gps-status-card">
+    <div><span class="status-dot waiting" id="v2GpsDot"></span><strong id="v2GpsTitle">Location not requested</strong></div>
+    <small id="v2GpsDetail">Tap Find opportunities near me. If GPS is unavailable, retailer and category searches still work.</small>
+  </div>
+
+  <div class="filterbar local-filter card v2-filter">
+    <label>Radius
+      <select id="v2Radius"><option value="5">5 miles</option><option value="10">10 miles</option><option value="25" selected>25 miles</option><option value="50">50 miles</option></select>
+    </label>
+    <label>Show
+      <select id="v2Source">
+        <option value="all">All opportunities</option>
+        <option value="clearance">Retail clearance</option>
+        <option value="returns">Return & bin stores</option>
+        <option value="liquidation">Liquidation / overstock</option>
+        <option value="estate">Estate sales</option>
+        <option value="garage">Garage / yard sales</option>
+        <option value="flea">Flea markets</option>
+        <option value="thrift">Thrift stores</option>
+        <option value="auction">Auctions</option>
+      </select>
+    </label>
+    <button class="ghost" id="v2RefreshBtn" type="button">Refresh recommendations</button>
+  </div>
+
+  <div class="card v2-quick-card">
+    <div class="section-head compact"><div><div class="eyebrow">TAP TO FILTER</div><h3>Sourcing categories</h3></div></div>
+    <div id="v2CategoryGrid" class="v2-category-grid"></div>
+  </div>
+
+  <div class="section-head">
+    <div><div class="eyebrow">RANKED FOR YOU</div><h2>Recommended next moves</h2><p id="v2RecommendationNote">Use your location to load local recommendations.</p></div>
+  </div>
+  <div id="v2Recommendations" class="v2-recommendations">
+    <div class="empty">Tap <strong>Find opportunities near me</strong> to get recommendations.</div>
+  </div>
+
+  <div class="card v2-search-card">
+    <div class="section-head compact"><div><div class="eyebrow">LIVE SEARCH</div><h3>Search a specific retailer</h3></div></div>
+    <div id="v2RetailerGrid" class="v2-retailer-grid"></div>
+  </div>
+
+  <div class="card sourcing-history-card">
+    <div class="section-head compact"><div><div class="eyebrow">YOUR RESULTS</div><h3>My Sourcing Intelligence</h3></div></div>
+    <p class="muted">As you save buys in Hunt Mode, stores that actually produce profit move higher in your recommendations.</p>
+    <div id="sourcingHistory" class="sourcing-history"></div>
+  </div>
+
+  <div class="card treasure-card"><div><h3>Treasure Watches</h3><p>These terms are carried into estate/garage/flea searches.</p></div><div class="inline-input"><input id="treasureInput" placeholder="sterling, watches, tools, toys..."/><button id="saveTreasureBtn" class="ghost">Save</button></div><div id="treasureChips" class="chips"></div></div>
+</section>
+
       <section id="tools" class="view"><div class="section-head"><div><div class="eyebrow">RESELLER OS</div><h2>Intelligence Tools</h2><p>The complete workflow around the buy.</p></div></div><div class="tool-grid">
       <div class="card tool-card"><h3>Sold Comps</h3><p>Jump directly to completed/sold eBay listings using the UPC or keywords from Hunt Mode.</p><button class="ghost" id="toolCompsBtn">Open sold comps</button></div>
       <div class="card tool-card"><h3>Unknown Treasure</h3><p>Capture marks, signatures, labels and model numbers without forcing an identification.</p><button class="ghost" data-go="hunt">Open camera</button></div>

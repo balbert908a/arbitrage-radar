@@ -458,7 +458,7 @@ renderTodaySources();renderTreasure();
 // Event-style sources (estate/garage sales) use current web/map searches because
 // there is no universal free structured event feed.
 
-const RELEASE_VERSION='1.8';
+const RELEASE_VERSION='2.0';
 let livePlaces=[];
 let routeStops=(()=>{try{return JSON.parse(localStorage.getItem('arbitrageRouteStops'))||[]}catch{return[]}})();
 function saveRoute(){localStorage.setItem('arbitrageRouteStops',JSON.stringify(routeStops));renderRoute();}
@@ -737,4 +737,139 @@ if(_fs) _fs.addEventListener('click',()=>{
     if(gps)gps.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();requestGps();},true);
     if(retry)retry.addEventListener('click',e=>{e.preventDefault();requestGps();});
   });
+})();
+
+
+// ================= Release 2.0 recommendation engine =================
+(function(){
+  const E=id=>document.getElementById(id);
+  const clean=s=>String(s||'').trim();
+  const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const catMeta=[
+    {id:'clearance',icon:'🏬',name:'Retail Clearance',priority:90,query:'discount clearance store'},
+    {id:'returns',icon:'📦',name:'Return & Bin Stores',priority:96,query:'bin store Amazon returns liquidation'},
+    {id:'liquidation',icon:'🏷️',name:'Liquidation / Overstock',priority:92,query:'liquidation overstock closeout store'},
+    {id:'estate',icon:'🏠',name:'Estate Sales',priority:94,query:'estate sales today'},
+    {id:'garage',icon:'🪧',name:'Garage / Yard Sales',priority:80,query:'garage sales yard sales today'},
+    {id:'flea',icon:'🧺',name:'Flea Markets',priority:84,query:'flea market'},
+    {id:'thrift',icon:'♻️',name:'Thrift Stores',priority:82,query:'thrift resale store'},
+    {id:'auction',icon:'🔨',name:'Auctions',priority:89,query:'estate liquidation auctions'}
+  ];
+  const retailers=['Walmart','TJ Maxx','Marshalls','Burlington','Ross Dress for Less',"Ollie's Bargain Outlet",'Home Depot',"Lowe's",'Target','Dollar General','Five Below','Dollar Tree','Walgreens','CVS'];
+  const nepaSeeds=[
+    {name:'T.J. Maxx',address:'650 Old Willow Ave, Honesdale, PA 18431',source:'clearance',base:96,why:'High-priority off-price hunt with rotating branded merchandise and clearance.',hours:'Usually 9:30 AM–9:30 PM'},
+    {name:'Walmart Supercenter',address:'723A Old Willow Ave, Honesdale, PA 18431',source:'clearance',base:94,why:'Strong clearance source across toys, electronics, seasonal, home and sporting goods.',hours:'Usually 6:00 AM–11:00 PM'},
+    {name:'The Home Depot',address:'721 Old Willow Ave, Honesdale, PA 18431',source:'clearance',base:86,why:'Clearance and shelf-markdown hunting; verify every price in store.',hours:'Usually 6:00 AM–10:00 PM'},
+    {name:'T.J. Maxx',address:'650 Commerce Blvd, Dickson City, PA 18519',source:'clearance',base:98,why:'Top off-price sourcing stop; strong fit for shippable branded goods.',hours:'Usually 9:30 AM–9:30 PM'},
+    {name:'Walmart Supercenter',address:'900 Commerce Blvd, Dickson City, PA 18519',source:'clearance',base:95,why:'Broad clearance opportunity across toys, electronics, seasonal and household.',hours:'Usually 6:00 AM–11:00 PM'},
+    {name:'Marshalls',address:'1118 Commerce Blvd, Dickson City, PA 18519',source:'clearance',base:94,why:'Off-price treasure-hunt inventory; accessories, shoes, beauty and home can be strong.',hours:'Usually 9:30 AM–9:30 PM'},
+    {name:'Burlington',address:'600 Commerce Blvd, Dickson City, PA 18519',source:'clearance',base:91,why:'Discount/off-price inventory with rotating branded goods; verify local markdowns.',hours:'Usually 9:00 AM–11:00 PM'},
+    {name:"Lowe's Home Improvement",address:'901 Viewmont Dr, Dickson City, PA 18519',source:'clearance',base:85,why:'Tools, hardware and seasonal clearance; Hunt Mode is the verification step.',hours:'Usually 6:00 AM–10:00 PM'},
+    {name:"Ollie's Bargain Outlet",address:'1790 N Keyser Ave, Scranton, PA 18508',source:'liquidation',base:93,why:'Closeout-heavy retailer with changing books, toys, home and seasonal inventory.',hours:'Usually 9:00 AM–9:00 PM'}
+  ];
+  let gps=null;
+
+  function historyBoost(name,address){
+    try{
+      if(typeof sourcingStats!=='function')return 0;
+      let best=0;
+      sourcingStats().forEach(s=>{
+        const r=clean(s.retailer).toLowerCase(), st=clean(s.store).toLowerCase(), n=clean(name).toLowerCase(), a=clean(address).toLowerCase();
+        if((r&&(n.includes(r)||r.includes(n)))||(st&&(n.includes(st)||a.includes(st))))best=Math.max(best,Math.round(s.score*.18));
+      });
+      return best;
+    }catch{return 0;}
+  }
+  function mapsSearch(query){
+    const suffix=gps?` near ${gps.lat.toFixed(5)},${gps.lon.toFixed(5)}`:' near me';
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query+suffix)}`;
+  }
+  function mapsDirections(address){return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;}
+  function webSearch(query){
+    const suffix=gps?` near ${gps.lat.toFixed(3)},${gps.lon.toFixed(3)}`:' near me';
+    return `https://www.google.com/search?q=${encodeURIComponent(query+suffix)}`;
+  }
+  function isNepa(){return gps&&gps.lat>40.9&&gps.lat<41.9&&gps.lon>-76.1&&gps.lon<-74.7;}
+  function selectedSource(){return E('v2Source')?.value||'all';}
+  function radius(){return +(E('v2Radius')?.value||25);}
+  function treasure(){try{return typeof getTreasureTerms==='function'?getTreasureTerms():[];}catch{return [];}}
+
+  function recommendationCard(r,rank){
+    const label=r.kind==='verified'?'VERIFIED LOCAL PLACE':r.kind==='live'?'LIVE MAP DATA':'LIVE SEARCH';
+    const evidence=r.kind==='verified'?'Real public business location; merchandise and clearance must be verified in store.':r.kind==='live'?'Returned by current OpenStreetMap data.':'Current search opportunity; open to see today’s results.';
+    const primary=r.address?`<a class="primary v2-action" href="${mapsDirections(r.address)}" target="_blank" rel="noopener">Directions</a>`:`<a class="primary v2-action" href="${r.url}" target="_blank" rel="noopener">Open live search</a>`;
+    const secondary=r.address?`<a class="ghost v2-action" href="${mapsSearch(r.name)}" target="_blank" rel="noopener">Search nearby</a>`:'';
+    return `<article class="card v2-rec-card"><div class="v2-rank">${rank}</div><div class="v2-rec-main">
+      <div class="v2-rec-top"><span class="v2-evidence">${label}</span><span class="v2-score">${r.score}/100</span></div>
+      <h3>${esc(r.name)}</h3>${r.address?`<div class="v2-address">${esc(r.address)}</div>`:''}${r.hours?`<div class="v2-hours">${esc(r.hours)}</div>`:''}
+      <p>${esc(r.why||'Potential sourcing opportunity.')}</p><div class="v2-proof">${esc(evidence)}</div>
+      <div class="actions">${primary}${secondary}${['estate','garage'].includes(r.source)?`<a class="ghost v2-action" href="${webSearch((r.source==='estate'?'estate sales':'garage yard sales')+' '+treasure().join(' '))}" target="_blank" rel="noopener">Search listings</a>`:''}</div>
+    </div></article>`;
+  }
+
+  async function overpassPlaces(lat,lon,radiusMiles){
+    const meters=Math.min(radiusMiles,35)*1609.344;
+    const q=`[out:json][timeout:12];(nwr["name"~"Walmart|TJ Maxx|T.J. Maxx|Marshalls|Burlington|Ross Dress|Ollie|Home Depot|Lowe|Target|Goodwill|Salvation Army",i](around:${Math.round(meters)},${lat},${lon});nwr["shop"~"second_hand|charity|outlet"](around:${Math.round(meters)},${lat},${lon});nwr["amenity"="marketplace"](around:${Math.round(meters)},${lat},${lon});nwr["name"~"liquidation|overstock|bin store|returns|flea|auction",i](around:${Math.round(meters)},${lat},${lon}););out center tags;`;
+    for(const endpoint of ['https://overpass.kumi.systems/api/interpreter','https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter']){
+      try{
+        const c=new AbortController(),timer=setTimeout(()=>c.abort(),9000);
+        const res=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(q),signal:c.signal});clearTimeout(timer);
+        if(!res.ok)continue; const data=await res.json(),out=[],seen=new Set();
+        for(const el of (data.elements||[])){
+          const t=el.tags||{},lat2=el.lat??el.center?.lat,lon2=el.lon??el.center?.lon;if(!lat2||!lon2)continue;
+          const name=t.name||t.brand;if(!name)continue;const key=(name+'|'+(t['addr:street']||'')).toLowerCase();if(seen.has(key))continue;seen.add(key);
+          const address=[t['addr:housenumber'],t['addr:street'],t['addr:city'],t['addr:state'],t['addr:postcode']].filter(Boolean).join(' ');
+          const low=name.toLowerCase();let source='clearance';
+          if(/thrift|goodwill|salvation|second hand|resale/.test(low)||t.shop==='second_hand'||t.shop==='charity')source='thrift';
+          else if(/liquidat|overstock|bin|returns/.test(low))source='liquidation';
+          else if(/flea|marketplace/.test(low)||t.amenity==='marketplace')source='flea';
+          else if(/auction/.test(low))source='auction';
+          out.push({name,address,source,kind:'live',base:88,why:'Current mapped sourcing location near your GPS position.',url:mapsSearch(name)});
+        }
+        if(out.length)return out.slice(0,30);
+      }catch(e){}
+    }
+    return [];
+  }
+  function searchRecommendations(){
+    const src=selectedSource(),cats=src==='all'?catMeta:catMeta.filter(c=>c.id===src);
+    return cats.map(c=>({name:c.name,source:c.id,kind:'search',base:c.priority,why:['estate','garage'].includes(c.id)?`Time-sensitive local search. Treasure Watch: ${treasure().slice(0,5).join(', ')||'not set'}.`:`Search current nearby ${c.name.toLowerCase()} opportunities.`,url:['estate','garage'].includes(c.id)?webSearch(c.query+' '+treasure().join(' ')):mapsSearch(c.query)}));
+  }
+  function score(items){return items.map(x=>({...x,score:Math.min(100,Math.round((x.base||80)+historyBoost(x.name,x.address)))})).sort((a,b)=>b.score-a.score);}
+  function render(items,note){
+    const ranked=score(items),el=E('v2Recommendations');
+    if(el)el.innerHTML=ranked.length?ranked.slice(0,18).map((r,i)=>recommendationCard(r,i+1)).join(''):'<div class="empty">No recommendations matched this filter. Try All opportunities or a larger radius.</div>';
+    if(E('v2RecommendationNote'))E('v2RecommendationNote').textContent=note||`${ranked.length} recommendations.`;
+  }
+  async function refresh(){
+    const b=E('v2RefreshBtn');if(b){b.disabled=true;b.textContent='Refreshing…';}
+    const src=selectedSource();let items=[];
+    if(isNepa()&&(src==='all'||src==='clearance'||src==='liquidation'))items.push(...nepaSeeds.filter(x=>src==='all'||x.source===src).map(x=>({...x,kind:'verified'})));
+    if(gps){const live=await overpassPlaces(gps.lat,gps.lon,radius());items.push(...live.filter(x=>src==='all'||x.source===src));}
+    items.push(...searchRecommendations());
+    const seen=new Set();items=items.filter(x=>{const k=(x.name+'|'+(x.address||'')+'|'+x.kind).toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
+    render(items,gps?'Ranked around your GPS location. Verified places are real locations; clearance merchandise still requires in-store verification.':'Showing live-search recommendations. Enable GPS for local verified and mapped places.');
+    if(b){b.disabled=false;b.textContent='Refresh recommendations';}
+  }
+  function locate(){
+    const dot=E('v2GpsDot'),title=E('v2GpsTitle'),detail=E('v2GpsDetail');
+    if(!navigator.geolocation){title.textContent='GPS unavailable';detail.textContent='Using live “near me” searches instead.';refresh();return;}
+    if(dot)dot.className='status-dot waiting';title.textContent='Getting your location…';detail.textContent='Waiting for your phone.';
+    navigator.geolocation.getCurrentPosition(async p=>{gps={lat:p.coords.latitude,lon:p.coords.longitude,accuracy:p.coords.accuracy};if(dot)dot.className='status-dot ok';title.textContent='GPS ready';detail.textContent=`${gps.lat.toFixed(5)}, ${gps.lon.toFixed(5)} · accuracy about ${Math.round(gps.accuracy||0)} m`;await refresh();},async err=>{if(dot)dot.className='status-dot error';title.textContent='GPS unavailable';detail.textContent=(err.message||'Location failed')+' — live searches still work.';await refresh();},{enableHighAccuracy:true,timeout:15000,maximumAge:120000});
+  }
+  function renderControls(){
+    const cg=E('v2CategoryGrid');if(cg)cg.innerHTML=catMeta.map(c=>`<button type="button" class="v2-cat-btn" data-cat="${c.id}"><span>${c.icon}</span><strong>${esc(c.name)}</strong><small>Priority ${c.priority}</small></button>`).join('');
+    const rg=E('v2RetailerGrid');if(rg)rg.innerHTML=retailers.map(r=>`<a class="v2-retailer-btn" href="${mapsSearch(r)}" target="_blank" rel="noopener"><strong>${esc(r)}</strong><small>Search nearby ↗</small></a>`).join('');
+  }
+
+  function init(){
+    renderControls();
+    E('v2LocateBtn')?.addEventListener('click',locate);
+    E('v2RefreshBtn')?.addEventListener('click',refresh);
+    E('v2Radius')?.addEventListener('change',refresh);
+    E('v2Source')?.addEventListener('change',refresh);
+    E('v2CategoryGrid')?.addEventListener('click',e=>{const b=e.target.closest('.v2-cat-btn');if(!b)return;const sel=E('v2Source');if(sel)sel.value=b.dataset.cat;refresh();E('v2Recommendations')?.scrollIntoView({behavior:'smooth',block:'start'});});
+    document.addEventListener('click',e=>{const tile=e.target.closest('.source-tile');if(!tile)return;e.preventDefault();e.stopImmediatePropagation();try{if(typeof navigate==='function')navigate('nearby');}catch(_){}setTimeout(()=>{const sel=E('v2Source');if(sel)sel.value=tile.dataset.source||'all';refresh();},30);},true);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

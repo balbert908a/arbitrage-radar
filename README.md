@@ -1,24 +1,22 @@
-# Arbitrage Radar — Release 1.8
+# Arbitrage Radar — Release 2.0
 
-Near Me UX cleanup release.
+Recommendation-engine release.
 
-## What changed
-- Removes the failed mapped-directory service from the user-facing Near Me promise.
-- Nearby sourcing buttons are now the primary business-discovery experience.
-- Embedded Leaflet/OpenStreetMap view is presented as **Your location map** for GPS/search-area context.
-- Removes alarming directory-failure language.
-- Diagnostics now describe business discovery as **MAPS SEARCH** rather than a failed/optional directory.
-- Removes the misleading emphasis on “0 mapped” business pins.
-- Adds substantially more bottom scroll clearance so the fixed navigation bar does not cover sourcing buttons, diagnostics, Treasure Watches, or lower Near Me content.
-- Preserves the working GPS flow, retry control, retailer/category searches, Hunt Mode, personal sourcing intelligence, inventory, and local data.
-- Service-worker cache bumped to Release 1.8.
+Near Me is now recommendation-first. The broken embedded directory/map experience is no longer the primary workflow.
 
-## Near Me flow
-1. Tap **Use my location**.
-2. GPS confirms your location.
-3. Tap Walmart, TJ Maxx, Marshalls, Burlington, Ross, Ollie's, Home Depot, Lowe's, Target, bins, liquidation, thrift, flea markets, estate sales, garage sales, or auctions.
-4. Current Google Maps results open around your location.
-5. The embedded map provides location context only; it no longer pretends to be a reliable business directory.
+## Working experience
+- Find opportunities near me → GPS → ranked recommendations.
+- Every sourcing category is a real working button.
+- Every retailer shortcut is a working Google Maps search.
+- Recommendation cards have working Directions / Live Search actions.
+- In northeastern Pennsylvania the app includes verified real sourcing locations for immediate recommendations: T.J. Maxx (Honesdale and Dickson City), Walmart (Honesdale and Dickson City), Home Depot Honesdale, Marshalls Dickson City, Burlington Dickson City, Lowe's Dickson City, and Ollie's Scranton.
+- Verified place does not mean live clearance inventory; Hunt Mode still verifies the item/price.
+- Multiple OpenStreetMap/Overpass endpoints are tried for additional current places; failure never blocks recommendations.
+- Estate/garage recommendations use Treasure Watch terms in live searches.
+- Personal Sourcing Intelligence boosts places that have produced profitable saved buys.
+
+## Update reliability
+Core app files are now network-first, old service-worker caches are deleted on activation, and the new worker claims open clients immediately. This is intended to prevent mixed/stale releases.
 
 ## Update
-Upload everything inside this folder over the existing GitHub repository and commit to `main`.
+Upload everything inside this folder over the existing GitHub repository and commit to main.
