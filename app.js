@@ -66,6 +66,12 @@ function renderTodaySources(){
 }
 
 const LEGACY_DEMO_IDS = new Set(['d1','d2','d3','d4','d5','d6']);
+function evidenceForDeal(d){
+  if(d.evidence) return d.evidence;
+  if(d.source==='LIVE') return 'LIVE STORE PRICE';
+  if(d.source==='IMPORTED') return 'VERIFY IN STORE';
+  return 'MANUAL';
+}
 function normalizeDeal(d){
   return {...d, source:d.source || 'MANUAL'};
 }
@@ -119,7 +125,7 @@ function dealCard(d){
   const penny=d.clearancePrice<=.01;
   return `<article class="deal-card" data-id="${d.id}">
     <div class="deal-main">
-      <div class="deal-topline"><span class="retailer">${escapeHtml(d.retailer)}</span><span class="data-source ${String(d.source||'MANUAL').toLowerCase()}">${escapeHtml(d.source||'MANUAL')}</span><span class="store">${escapeHtml(d.store)} · ${d.miles} mi</span><span class="confidence ${d.confidence.toLowerCase()}">${d.confidence}</span>${penny?'<span class="penny-badge">PENNY WATCH</span>':''}${d.newMarkdown?'<span class="markdown-badge">NEW MARKDOWN</span>':''}</div>
+      <div class="deal-topline"><span class="retailer">${escapeHtml(d.retailer)}</span><span class="data-source ${String(d.source||'MANUAL').toLowerCase()}">${escapeHtml(d.source||'MANUAL')}</span><span class="evidence mini">${escapeHtml(d.evidence||evidenceForDeal(d))}</span><span class="store">${escapeHtml(d.store)} · ${d.miles} mi</span><span class="confidence ${d.confidence.toLowerCase()}">${d.confidence}</span>${penny?'<span class="penny-badge">PENNY WATCH</span>':''}${d.newMarkdown?'<span class="markdown-badge">NEW MARKDOWN</span>':''}</div>
       <div class="deal-title">${escapeHtml(d.item)}</div>
       <div class="deal-stats">
         <span class="stat">Buy <b>${money(d.clearancePrice)}</b></span><span class="stat">Was ${money(d.regularPrice)}</span><span class="stat">Markdown <b>${pct(c.markdown)}</b></span><span class="stat">Resale ${money(d.resalePrice)}</span><span class="stat">Profit <b>${money(c.profit)}</b></span><span class="stat">ROI <b>${pct(c.roi)}</b></span><span class="stat">Qty ~${d.quantity}</span>
@@ -207,7 +213,7 @@ async function refreshClearanceFeed(){
       penny:/^(true|1|yes)$/i.test(String(r.penny??'')) || +(r.buy??r.price??0)===0.01,
       newMarkdown:/^(true|1|yes)$/i.test(String(r.newMarkdown??'')),
       lastSeen:r.lastSeen||r.updatedAt||now,
-      source:'LIVE'
+      source:'LIVE', evidence:r.evidence||r.evidenceType||'LIVE STORE PRICE'
     })).filter(d=>d.buy>=0 && d.item);
     state.deals=mapped;
     saveState(); renderAll();
@@ -237,7 +243,7 @@ $('#addDealBtn').onclick=()=>$('#dealDialog').showModal();
 $('#submitDeal').onclick=e=>{
   e.preventDefault();
   const f=new FormData($('#dealForm'));
-  const d={id:'d'+Date.now(),retailer:f.get('retailer'),store:f.get('store'),item:f.get('item'),category:f.get('category')||'',regularPrice:+f.get('regularPrice'),clearancePrice:+f.get('clearancePrice'),resalePrice:+f.get('resalePrice'),shipping:+f.get('shipping')||0,quantity:+f.get('quantity')||0,miles:+f.get('miles')||0,confidence:f.get('confidence'),upc:f.get('upc')||'',newMarkdown:f.get('newMarkdown')==='on',lastSeen:nowISO(),source:'MANUAL'};
+  const d={id:'d'+Date.now(),retailer:f.get('retailer'),store:f.get('store'),item:f.get('item'),category:f.get('category')||'',regularPrice:+f.get('regularPrice'),clearancePrice:+f.get('clearancePrice'),resalePrice:+f.get('resalePrice'),shipping:+f.get('shipping')||0,quantity:+f.get('quantity')||0,miles:+f.get('miles')||0,confidence:f.get('confidence'),upc:f.get('upc')||'',newMarkdown:f.get('newMarkdown')==='on',lastSeen:nowISO(),source:'MANUAL',evidence:'MANUAL'};
   state.deals.push(d);saveState();$('#dealDialog').close();$('#dealForm').reset();renderAll();
 };
 
@@ -292,7 +298,7 @@ $('#csvInput').onchange=async e=>{
   const required=['retailer','store','item','regularPrice','clearancePrice','resalePrice'];
   if(!required.every(h=>headers.includes(h)))return alert(`CSV needs: ${required.join(', ')}`);
   const idx=Object.fromEntries(headers.map((h,i)=>[h,i]));
-  rows.slice(1).filter(r=>r.some(Boolean)).forEach(r=>state.deals.push({id:'d'+Date.now()+Math.random(),retailer:r[idx.retailer]||'',store:r[idx.store]||'',item:r[idx.item]||'',category:r[idx.category]||'',regularPrice:+r[idx.regularPrice]||0,clearancePrice:+r[idx.clearancePrice]||0,resalePrice:+r[idx.resalePrice]||0,shipping:+r[idx.shipping]||0,quantity:+r[idx.quantity]||1,miles:+r[idx.miles]||0,confidence:r[idx.confidence]||'Medium',upc:r[idx.upc]||'',newMarkdown:/^(true|1|yes)$/i.test(r[idx.newMarkdown]||''),lastSeen:r[idx.lastSeen]||nowISO(),source:'IMPORTED'}));
+  rows.slice(1).filter(r=>r.some(Boolean)).forEach(r=>state.deals.push({id:'d'+Date.now()+Math.random(),retailer:r[idx.retailer]||'',store:r[idx.store]||'',item:r[idx.item]||'',category:r[idx.category]||'',regularPrice:+r[idx.regularPrice]||0,clearancePrice:+r[idx.clearancePrice]||0,resalePrice:+r[idx.resalePrice]||0,shipping:+r[idx.shipping]||0,quantity:+r[idx.quantity]||1,miles:+r[idx.miles]||0,confidence:r[idx.confidence]||'Medium',upc:r[idx.upc]||'',newMarkdown:/^(true|1|yes)$/i.test(r[idx.newMarkdown]||''),lastSeen:r[idx.lastSeen]||nowISO(),source:'IMPORTED',evidence:'VERIFY IN STORE'}));
   saveState();renderAll(); e.target.value='';
 };
 function parseCSV(text){let out=[],row=[],field='',quote=false;for(let i=0;i<text.length;i++){let ch=text[i];if(ch==='"'){if(quote&&text[i+1]==='"'){field+='"';i++;}else quote=!quote;}else if(ch===','&&!quote){row.push(field);field='';}else if((ch==='\n'||ch==='\r')&&!quote){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(field);out.push(row);row=[];field='';}else field+=ch;}if(field.length||row.length){row.push(field);out.push(row)}return out;}

@@ -27,7 +27,7 @@
       <section id="dashboard" class="view active">
         <div class="hero card">
           <div>
-            <span class="pill hot">RELEASE 1.2</span>
+            <span class="pill hot">RELEASE 1.3</span>
             <h2>Know where to hunt before you leave.</h2>
             <p>Interactive sourcing map + expanded retailer intelligence + clearance + hunt mode + sold-comps links + routes + inventory.</p>
           </div>
@@ -200,9 +200,31 @@
 
         <div class="card source-card">
           
+
+<div class="card">
+  <h3>Retailer intelligence</h3>
+  <p class="muted">Arbitrage Radar separates store-confirmed data from leads that still need in-store verification.</p>
+  <div class="evidence-legend">
+    <span class="evidence live-store">LIVE STORE PRICE</span>
+    <span class="evidence lead">ONLINE CLEARANCE LEAD</span>
+    <span class="evidence local">LOCAL SOURCE</span>
+    <span class="evidence manual">MANUAL</span>
+    <span class="evidence verify">VERIFY IN STORE</span>
+  </div>
+  <div class="retailer-grid">
+    <div><strong>Lowe's</strong><small>Live API-ready: store price / inventory / aisle when credentials are connected.</small></div>
+    <div><strong>Walmart</strong><small>Priority retailer. GPS + Hunt Mode + permitted feed connector; no fake shelf inventory.</small></div>
+    <div><strong>TJ Maxx / Marshalls</strong><small>Online clearance intelligence + verify in store.</small></div>
+    <div><strong>Burlington</strong><small>Clearance leads + verify local price/availability.</small></div>
+    <div><strong>Ollie's</strong><small>Buyout/deal leads + local verification.</small></div>
+    <div><strong>Ross</strong><small>GPS destination + Hunt Mode.</small></div>
+    <div><strong>Home Depot / Target</strong><small>Hunt Mode + permitted external intelligence only.</small></div>
+    <div><strong>eBay</strong><small>Active-comp API-ready + sold-search evidence.</small></div>
+  </div>
+</div>
 <div class="card">
   <h3>Live clearance feed</h3>
-  <p class="muted">Connect a JSON or CSV feed you control or are permitted to use. LIVE results are timestamped and kept separate from manual/imported data. Retailer websites are not scraped by this app.</p>
+  <p class="muted">Connect a JSON or CSV feed you control or are permitted to use. Walmart is a priority source here whenever a permitted local-price feed becomes available. LIVE results are timestamped and kept separate from manual/imported data. Retailer websites are not scraped by this app.</p>
   <label>Feed URL
     <input id="feedUrlInput" type="url" placeholder="https://example.com/clearance-feed.json">
   </label>
