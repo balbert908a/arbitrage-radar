@@ -134,6 +134,29 @@ function historyScoreForPlace(place){
   });
   return best;
 }
+
+const DISCOVERY_CATEGORIES=[
+  ['Priority retailers','Walmart TJ Maxx Marshalls Burlington Ross Ollies Lowes Home Depot Target'],
+  ['Return & bin stores','bin store return store Amazon returns liquidation bins'],
+  ['Liquidation / overstock','liquidation store overstock store closeout store'],
+  ['Thrift / resale','thrift store resale store consignment store'],
+  ['Flea markets','flea market'],
+  ['Estate sales','estate sales'],
+  ['Garage / yard sales','garage sales yard sales'],
+  ['Auctions','auction house local auctions']
+];
+function mapsNearbyUrl(query){
+  const q=encodeURIComponent(query);
+  const lat=Number(localPos?.lat), lon=Number(localPos?.lon);
+  return Number.isFinite(lat)&&Number.isFinite(lon)
+    ? `https://www.google.com/maps/search/?api=1&query=${q}&center=${lat},${lon}`
+    : `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+function renderDiscoveryButtons(){
+  const el=$('#discoveryButtons'); if(!el) return;
+  el.innerHTML=DISCOVERY_CATEGORIES.map(([label,q])=>`<a class="discovery-btn" href="${mapsNearbyUrl(q)}" target="_blank" rel="noopener"><strong>${escapeHtml(label)}</strong><small>Search near me ↗</small></a>`).join('');
+}
+
 function renderSourcingHistory(){
   const stats=sourcingStats(), el=$('#sourcingHistory'), priority=$('#personalPriority');
   const empty='<div class="empty-state">No sourcing history yet. In Hunt Mode, add the retailer/location and tap <strong>Save as bought</strong>. Radar will learn which places actually make you money.</div>';
@@ -267,7 +290,7 @@ async function refreshClearanceFeed(){
   }
 }
 
-function renderAll(){ renderMetrics(); renderDeals(); renderInventory(); renderSettings(); renderTodaySources(); renderTreasure(); renderSourcingHistory(); bindDynamic(); }
+function renderAll(){ renderMetrics(); renderDeals(); renderInventory(); renderSettings(); renderTodaySources(); renderTreasure(); renderSourcingHistory(); renderDiscoveryButtons(); bindDynamic(); }
 function bindDynamic(){
   $$('.route-btn').forEach(b=>b.onclick=()=>window.open(`https://www.google.com/maps/search/?api=1&query=${b.dataset.store}`,'_blank'));
   $$('.copy-listing').forEach(b=>b.onclick=()=>{const x=state.inventory.find(i=>i.id===b.dataset.id); navigator.clipboard?.writeText(makeListing(x)); b.textContent='Copied'; setTimeout(()=>b.textContent='Copy listing starter',1200)});
@@ -599,7 +622,7 @@ async function renderLocalSources(latitude,longitude){
     status.innerHTML=`<strong>Live local scan complete.</strong> Found ${livePlaces.length} mapped sourcing locations. Event searches remain live links because estate/garage listings change constantly.`;
   }catch(err){
     livePlaces=[];
-    status.innerHTML=`<strong>GPS ready.</strong> <span class="danger-text">Structured local directory could not be reached.</span> Current Maps/web searches are still available below.`;
+    status.innerHTML=`<strong>GPS ready.</strong> <span class="danger-text">Automatic mapped-place discovery is unavailable right now.</span> Current Maps/web searches are still available below.`;
   }
   renderLiveResults(latitude,longitude,radius,selected);
 }
