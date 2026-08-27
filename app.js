@@ -1,0 +1,302 @@
+const $ = (s, root=document) => root.querySelector(s);
+const $$ = (s, root=document) => [...root.querySelectorAll(s)];
+const money = n => `$${Number(n || 0).toFixed(2)}`;
+const pct = n => `${Math.round(Number(n || 0))}%`;
+const nowISO = () => new Date().toISOString();
+const daysAgo = n => new Date(Date.now()-n*86400000).toISOString();
+
+const defaults = {
+  settings: { minProfit:15, minRoi:100, maxBuy:50, fee:13.25, radius:35, travel:0.35, categories:'toys, tools, electronics, collectibles, small home goods', exclude:'oversized, freight' },
+  deals: [
+    {id:'d1',retailer:'Home Depot',store:'Dickson City #4120',item:'Milwaukee M12 LED Work Light',category:'tools',regularPrice:49.97,clearancePrice:12.03,resalePrice:39.99,shipping:6,quantity:3,miles:14.2,confidence:'High',upc:'045242006755',newMarkdown:true,lastSeen:daysAgo(0)},
+    {id:'d2',retailer:'Walmart',store:'Dickson City Supercenter',item:'LEGO Creator 3-in-1 Set',category:'toys',regularPrice:39.97,clearancePrice:12,resalePrice:34.95,shipping:7,quantity:5,miles:13.1,confidence:'High',upc:'673419000001',newMarkdown:true,lastSeen:daysAgo(0)},
+    {id:'d3',retailer:'Lowe\'s',store:'Scranton',item:'Kobalt 24V Tool Accessory',category:'tools',regularPrice:59.98,clearancePrice:17.99,resalePrice:47.5,shipping:8,quantity:2,miles:16.5,confidence:'Medium',upc:'885911000002',newMarkdown:false,lastSeen:daysAgo(1)},
+    {id:'d4',retailer:'Home Depot',store:'Honesdale #4184',item:'Seasonal LED Fixture - penny candidate',category:'home',regularPrice:34.97,clearancePrice:0.01,resalePrice:24.99,shipping:6.5,quantity:1,miles:21.8,confidence:'Low',upc:'000000000001',newMarkdown:false,lastSeen:daysAgo(2)},
+    {id:'d5',retailer:'Target',store:'Dickson City',item:'NECA Collectible Figure',category:'collectibles',regularPrice:34.99,clearancePrice:10.49,resalePrice:37.99,shipping:6.25,quantity:2,miles:13.5,confidence:'Medium',upc:'634482000003',newMarkdown:true,lastSeen:daysAgo(0)},
+    {id:'d6',retailer:'Dollar General',store:'Lake Ariel area',item:'Discontinued small appliance',category:'home',regularPrice:25,clearancePrice:5,resalePrice:27.99,shipping:7,quantity:2,miles:6.2,confidence:'Medium',upc:'000000000006',newMarkdown:false,lastSeen:daysAgo(1)}
+  ],
+  inventory: [], watch: []
+};
+
+
+const sourceCatalog = [
+  {id:'returns',name:'Return & Bin Stores',icon:'📦',priority:95,queries:['bin store','return store','Amazon returns store','returns liquidation store','liquidation bins'],why:'High-variance returned/overstock inventory; restock day and bin-price schedule can matter more than lowest-price day.'},
+  {id:'liquidation',name:'Liquidation / Overstock',icon:'🏷️',priority:90,queries:['liquidation store','overstock store','liquidation warehouse','closeout store'],why:'Retail returns, closeouts and shelf pulls can create deep discounts on shippable merchandise.'},
+  {id:'estate',name:'Estate Sales',icon:'🏠',priority:92,queries:['estate sales today','estate sale company'],why:'Strong treasure potential for jewelry, sterling, watches, collectibles, tools and vintage household goods.'},
+  {id:'garage',name:'Garage / Yard Sales',icon:'🪧',priority:78,queries:['garage sales today','yard sales today'],why:'Low acquisition cost and negotiability; quality varies, so descriptions and photos matter.'},
+  {id:'flea',name:'Flea Markets',icon:'🧺',priority:82,queries:['flea market','swap meet'],why:'Many sellers in one stop; useful for collectibles, tools, vintage goods and repeat sourcing relationships.'},
+  {id:'thrift',name:'Thrift Stores',icon:'♻️',priority:80,queries:['thrift store','charity thrift store','resale shop'],why:'Steady replenishment and broad categories; best when paired with Hunt Mode and sold comps.'},
+  {id:'auction',name:'Auctions',icon:'🔨',priority:88,queries:['auction house','liquidation auction','estate auction'],why:'Lots can contain large value gaps, but buyer premium and lot-level risk must be included.'},
+  {id:'clearance',name:'Retail Clearance',icon:'🏬',priority:86,queries:['Home Depot','Walmart','Lowes','Target','Dollar General'],why:'Structured products and barcodes make resale math easier; local markdowns and inventory can vary by store.'}
+];
+
+function getTreasureTerms(){
+  try{return JSON.parse(localStorage.getItem('arbitrageTreasureTerms')) || ['sterling','gold jewelry','watches','tools','toys','sports collectibles','sealed electronics'];}
+  catch{return ['sterling','watches','tools','toys'];}
+}
+function saveTreasureTerms(terms){localStorage.setItem('arbitrageTreasureTerms',JSON.stringify(terms));}
+function renderTreasure(){
+  const terms=getTreasureTerms();
+  const input=$('#treasureInput'); if(input) input.value=terms.join(', ');
+  const chips=$('#treasureChips'); if(chips) chips.innerHTML=terms.map(t=>`<span class="chip">${escapeHtml(t)}</span>`).join('');
+}
+function renderTodaySources(){
+  const el=$('#todaySources'); if(!el)return;
+  el.innerHTML=sourceCatalog.slice(0,8).map(x=>`<button class="source-tile" data-source="${x.id}" data-go="nearby"><span>${x.icon}</span><strong>${escapeHtml(x.name)}</strong><small>Priority ${x.priority}</small></button>`).join('');
+  $$('.source-tile').forEach(b=>b.addEventListener('click',()=>{ const sel=$('#sourceType'); if(sel) sel.value=b.dataset.source; }));
+}
+
+function loadState(){
+  try {
+    const saved = JSON.parse(localStorage.getItem('arbitrageRadarState'));
+    return saved ? {settings:{...defaults.settings,...saved.settings}, deals:saved.deals||[], inventory:saved.inventory||[], watch:saved.watch||[]} : structuredClone(defaults);
+  } catch { return structuredClone(defaults); }
+}
+let state = loadState();
+function saveState(){ localStorage.setItem('arbitrageRadarState', JSON.stringify(state)); }
+
+function calcDeal(d){
+  const fee = d.resalePrice * (state.settings.fee/100);
+  const profit = d.resalePrice - d.clearancePrice - (d.shipping||0) - fee;
+  const roi = d.clearancePrice > 0 ? (profit/d.clearancePrice)*100 : 9999;
+  const markdown = d.regularPrice > 0 ? (1-d.clearancePrice/d.regularPrice)*100 : 0;
+  const confidenceWeight = {High:1,Medium:.78,Low:.52}[d.confidence] || .65;
+  const freshnessDays = Math.max(0,(Date.now()-new Date(d.lastSeen||Date.now()).getTime())/86400000);
+  const freshness = Math.max(.45,1-(freshnessDays*.15));
+  const travelPenalty = (d.miles||0)*state.settings.travel;
+  const score = Math.max(0, Math.min(100, (profit*2.1 + Math.min(roi,400)*.08 + markdown*.18)*confidenceWeight*freshness - travelPenalty));
+  return {fee,profit,roi,markdown,score,freshnessDays};
+}
+
+function renderMetrics(){
+  const qualified = state.deals.map(d=>({...d,...calcDeal(d)})).filter(d=>d.profit>=state.settings.minProfit && d.roi>=state.settings.minRoi && d.miles<=state.settings.radius);
+  const pennies = state.deals.filter(d=>d.clearancePrice<=.01).length;
+  const bestProfit = qualified.length ? Math.max(...qualified.map(d=>d.profit)) : 0;
+  const stores = new Set(qualified.map(d=>`${d.retailer}|${d.store}`)).size;
+  $('#metrics').innerHTML = [
+    [qualified.length,'Qualified flips'],[pennies,'Penny candidates'],[stores,'Stores worth checking'],[money(bestProfit),'Best est. profit']
+  ].map(([a,b])=>`<div class="metric"><strong>${a}</strong><span>${b}</span></div>`).join('');
+}
+
+function retailerOptions(){
+  const current = $('#retailerFilter').value;
+  const retailers=[...new Set(state.deals.map(d=>d.retailer))].sort();
+  $('#retailerFilter').innerHTML='<option value="all">All retailers</option>'+retailers.map(r=>`<option>${escapeHtml(r)}</option>`).join('');
+  if(retailers.includes(current)) $('#retailerFilter').value=current;
+}
+
+function dealCard(d){
+  const c=calcDeal(d);
+  const penny=d.clearancePrice<=.01;
+  return `<article class="deal-card" data-id="${d.id}">
+    <div class="deal-main">
+      <div class="deal-topline"><span class="retailer">${escapeHtml(d.retailer)}</span><span class="store">${escapeHtml(d.store)} · ${d.miles} mi</span><span class="confidence ${d.confidence.toLowerCase()}">${d.confidence}</span>${penny?'<span class="penny-badge">PENNY WATCH</span>':''}${d.newMarkdown?'<span class="markdown-badge">NEW MARKDOWN</span>':''}</div>
+      <div class="deal-title">${escapeHtml(d.item)}</div>
+      <div class="deal-stats">
+        <span class="stat">Buy <b>${money(d.clearancePrice)}</b></span><span class="stat">Was ${money(d.regularPrice)}</span><span class="stat">Markdown <b>${pct(c.markdown)}</b></span><span class="stat">Resale ${money(d.resalePrice)}</span><span class="stat">Profit <b>${money(c.profit)}</b></span><span class="stat">ROI <b>${pct(c.roi)}</b></span><span class="stat">Qty ~${d.quantity}</span>
+      </div>
+    </div>
+    <div class="deal-score"><div class="score">${Math.round(c.score)}</div><div class="score-label">Opportunity score</div><button class="ghost route-btn" data-store="${encodeURIComponent(d.store+' '+d.retailer)}">Route</button></div>
+  </article>`;
+}
+
+function getFilteredDeals(){
+  const mode=$('#modeFilter').value, retailer=$('#retailerFilter').value;
+  const minProfit=Number($('#minProfitFilter').value||0), maxMiles=Number($('#maxMilesFilter').value||999);
+  return state.deals.map(d=>({...d,_calc:calcDeal(d)})).filter(d=>{
+    if(retailer!=='all'&&d.retailer!==retailer)return false;
+    if(d._calc.profit<minProfit||d.miles>maxMiles)return false;
+    if(mode==='penny'&&d.clearancePrice>.01)return false;
+    if(mode==='70'&&d._calc.markdown<70)return false;
+    if(mode==='new'&&!d.newMarkdown)return false;
+    return true;
+  }).sort((a,b)=> mode==='profit' ? b._calc.profit-a._calc.profit : b._calc.score-a._calc.score);
+}
+
+function renderDeals(){
+  retailerOptions();
+  const deals=getFilteredDeals();
+  $('#radarDeals').innerHTML=deals.length?deals.map(dealCard).join(''):'<div class="empty">No opportunities match these rules yet.</div>';
+  const top=state.deals.map(d=>({...d,_calc:calcDeal(d)})).filter(d=>d._calc.profit>=state.settings.minProfit&&d.miles<=state.settings.radius).sort((a,b)=>b._calc.score-a._calc.score).slice(0,4);
+  $('#topDeals').innerHTML=top.length?top.map(dealCard).join(''):'<div class="empty">Add or import clearance finds to start ranking trips.</div>';
+}
+
+function renderSettings(){
+  const s=state.settings;
+  $('#settingMinProfit').value=s.minProfit; $('#settingMinRoi').value=s.minRoi; $('#settingMaxBuy').value=s.maxBuy; $('#settingFee').value=s.fee; $('#settingRadius').value=s.radius; $('#settingTravel').value=s.travel; $('#settingCategories').value=s.categories; $('#settingExclude').value=s.exclude;
+  $('#minProfitFilter').value=s.minProfit; $('#maxMilesFilter').value=s.radius;
+}
+
+function renderInventory(){
+  $('#inventoryList').innerHTML = state.inventory.length ? state.inventory.slice().reverse().map(x=>{
+    const listing=makeListing(x);
+    return `<article class="inventory-card"><div class="title">${escapeHtml(x.item||'Unidentified item')}</div><div class="inventory-meta">Bought ${money(x.buyPrice)} · target ${money(x.salePrice)} · est. profit ${money(x.profit)} · ${new Date(x.created).toLocaleDateString()}</div><div class="listing-box">${escapeHtml(listing)}</div><div class="actions" style="margin-top:10px"><button class="ghost copy-listing" data-id="${x.id}">Copy listing starter</button><button class="ghost remove-inventory" data-id="${x.id}">Remove</button></div></article>`;
+  }).join('') : '<div class="empty">Nothing bought yet. When Hunt Mode says BUY, save the item here.</div>';
+}
+
+function makeListing(x){
+  const name=(x.item||'Item').trim();
+  const barcode=x.barcode?` UPC ${x.barcode}`:'';
+  const title=`${name}${barcode}`.slice(0,80);
+  return `${title}\n\nPre-owned/new item as shown. Please review photos for exact condition and included components.\n\nUPC: ${x.barcode||'N/A'}\nTarget price: ${money(x.salePrice)}\n\nShips carefully packed.`;
+}
+
+function renderAll(){ renderMetrics(); renderDeals(); renderInventory(); renderSettings(); renderTodaySources(); renderTreasure(); bindDynamic(); }
+function bindDynamic(){
+  $$('.route-btn').forEach(b=>b.onclick=()=>window.open(`https://www.google.com/maps/search/?api=1&query=${b.dataset.store}`,'_blank'));
+  $$('.copy-listing').forEach(b=>b.onclick=()=>{const x=state.inventory.find(i=>i.id===b.dataset.id); navigator.clipboard?.writeText(makeListing(x)); b.textContent='Copied'; setTimeout(()=>b.textContent='Copy listing starter',1200)});
+  $$('.remove-inventory').forEach(b=>b.onclick=()=>{state.inventory=state.inventory.filter(i=>i.id!==b.dataset.id);saveState();renderInventory();bindDynamic()});
+}
+
+function navigate(id){
+  $$('.view').forEach(v=>v.classList.toggle('active',v.id===id));
+  $$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.go===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+$$('[data-go]').forEach(b=>b.addEventListener('click',()=>navigate(b.dataset.go)));
+
+['modeFilter','retailerFilter','minProfitFilter','maxMilesFilter'].forEach(id=>$('#'+id).addEventListener('input',()=>{renderDeals();bindDynamic()}));
+
+$('#addDealBtn').onclick=()=>$('#dealDialog').showModal();
+$('#submitDeal').onclick=e=>{
+  e.preventDefault();
+  const f=new FormData($('#dealForm'));
+  const d={id:'d'+Date.now(),retailer:f.get('retailer'),store:f.get('store'),item:f.get('item'),category:f.get('category')||'',regularPrice:+f.get('regularPrice'),clearancePrice:+f.get('clearancePrice'),resalePrice:+f.get('resalePrice'),shipping:+f.get('shipping')||0,quantity:+f.get('quantity')||0,miles:+f.get('miles')||0,confidence:f.get('confidence'),upc:f.get('upc')||'',newMarkdown:f.get('newMarkdown')==='on',lastSeen:nowISO()};
+  state.deals.push(d);saveState();$('#dealDialog').close();$('#dealForm').reset();renderAll();
+};
+
+$('#saveSettingsBtn').onclick=()=>{
+  state.settings={minProfit:+$('#settingMinProfit').value,minRoi:+$('#settingMinRoi').value,maxBuy:+$('#settingMaxBuy').value,fee:+$('#settingFee').value,radius:+$('#settingRadius').value,travel:+$('#settingTravel').value,categories:$('#settingCategories').value,exclude:$('#settingExclude').value};
+  saveState();renderAll();$('#saveSettingsBtn').textContent='Saved';setTimeout(()=>$('#saveSettingsBtn').textContent='Save settings',1200);
+};
+$('#resetDemoBtn').onclick=()=>{state=structuredClone(defaults);saveState();renderAll()};
+
+function huntCalc(){
+  const buy=+$('#buyPrice').value||0,sale=+$('#salePrice').value||0,ship=+$('#shippingCost').value||0,other=+$('#otherCost').value||0;
+  const fee=sale*(state.settings.fee/100),profit=sale-buy-ship-other-fee,roi=buy>0?(profit/buy)*100:0;
+  const buyOk=profit>=state.settings.minProfit&&roi>=state.settings.minRoi&&buy<=state.settings.maxBuy;
+  const reason=buyOk?'Meets your profit, ROI and max-buy rules.':[`profit ${money(profit)} vs ${money(state.settings.minProfit)} minimum`,`ROI ${pct(roi)} vs ${pct(state.settings.minRoi)} minimum`,`${money(buy)} buy vs ${money(state.settings.maxBuy)} max`].filter((r,i)=>[profit<state.settings.minProfit,roi<state.settings.minRoi,buy>state.settings.maxBuy][i]).join(' · ');
+  $('#verdict').className=`verdict ${buyOk?'buy':'pass'}`;
+  $('#verdict').innerHTML=`<h3>${buyOk?'BUY':'PASS'}</h3><p>${reason}</p><div class="verdict-grid"><div>Est. profit<strong>${money(profit)}</strong></div><div>ROI<strong>${pct(roi)}</strong></div><div>Marketplace fee<strong>${money(fee)}</strong></div></div>`;
+  return {buy,sale,ship,other,fee,profit,roi,buyOk};
+}
+$('#calculateBtn').onclick=huntCalc;
+
+$('#saveInventoryBtn').onclick=()=>{
+  const c=huntCalc();
+  state.inventory.push({id:'i'+Date.now(),item:$('#huntName').value||'Unidentified item',barcode:$('#huntBarcode').value,buyPrice:c.buy,salePrice:c.sale,shipping:c.ship,other:c.other,profit:c.profit,created:nowISO()});saveState();renderInventory();bindDynamic();$('#saveInventoryBtn').textContent='Saved';setTimeout(()=>$('#saveInventoryBtn').textContent='Save as bought',1200);
+};
+$('#saveWatchBtn').onclick=()=>{state.watch.push({id:'w'+Date.now(),item:$('#huntName').value,barcode:$('#huntBarcode').value,buyPrice:+$('#buyPrice').value,salePrice:+$('#salePrice').value,created:nowISO()});saveState();$('#saveWatchBtn').textContent='Watching';setTimeout(()=>$('#saveWatchBtn').textContent='Watch item',1200)};
+
+$('#photoInput').onchange=e=>{const file=e.target.files?.[0];if(!file)return;const url=URL.createObjectURL(file);const p=$('#photoPreview');p.style.backgroundImage=`url(${url})`;p.classList.remove('hidden')};
+
+let stream, scanTimer;
+$('#scanBtn').onclick=async()=>{
+  $('#scanDialog').showModal();
+  const status=$('#scannerStatus');
+  if(!('BarcodeDetector' in window)){status.textContent='This browser does not expose BarcodeDetector. Type the UPC, or use Chrome/Android with barcode support.';return;}
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});$('#scannerVideo').srcObject=stream;
+    const detector=new BarcodeDetector({formats:['upc_a','upc_e','ean_13','ean_8','code_128']});
+    scanTimer=setInterval(async()=>{try{const codes=await detector.detect($('#scannerVideo'));if(codes.length){$('#huntBarcode').value=codes[0].rawValue;closeScanner();}}catch{}},450);
+    status.textContent='Point the camera at the barcode.';
+  }catch(err){status.textContent='Camera unavailable. You can still type the UPC manually.';}
+};
+function closeScanner(){if(scanTimer)clearInterval(scanTimer);if(stream)stream.getTracks().forEach(t=>t.stop());$('#scanDialog').close();}
+$('#closeScanner').onclick=closeScanner;
+
+$('#importBtn').onclick=()=>$('#csvInput').click();
+$('#csvInput').onchange=async e=>{
+  const file=e.target.files?.[0]; if(!file)return;
+  const text=await file.text(); const rows=parseCSV(text); if(!rows.length)return alert('No rows found.');
+  const headers=rows[0].map(h=>h.trim());
+  const required=['retailer','store','item','regularPrice','clearancePrice','resalePrice'];
+  if(!required.every(h=>headers.includes(h)))return alert(`CSV needs: ${required.join(', ')}`);
+  const idx=Object.fromEntries(headers.map((h,i)=>[h,i]));
+  rows.slice(1).filter(r=>r.some(Boolean)).forEach(r=>state.deals.push({id:'d'+Date.now()+Math.random(),retailer:r[idx.retailer]||'',store:r[idx.store]||'',item:r[idx.item]||'',category:r[idx.category]||'',regularPrice:+r[idx.regularPrice]||0,clearancePrice:+r[idx.clearancePrice]||0,resalePrice:+r[idx.resalePrice]||0,shipping:+r[idx.shipping]||0,quantity:+r[idx.quantity]||1,miles:+r[idx.miles]||0,confidence:r[idx.confidence]||'Medium',upc:r[idx.upc]||'',newMarkdown:/^(true|1|yes)$/i.test(r[idx.newMarkdown]||''),lastSeen:r[idx.lastSeen]||nowISO()}));
+  saveState();renderAll(); e.target.value='';
+};
+function parseCSV(text){let out=[],row=[],field='',quote=false;for(let i=0;i<text.length;i++){let ch=text[i];if(ch==='"'){if(quote&&text[i+1]==='"'){field+='"';i++;}else quote=!quote;}else if(ch===','&&!quote){row.push(field);field='';}else if((ch==='\n'||ch==='\r')&&!quote){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(field);out.push(row);row=[];field='';}else field+=ch;}if(field.length||row.length){row.push(field);out.push(row)}return out;}
+function escapeHtml(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));}
+
+let deferredPrompt;
+const installDialog=$('#installDialog');
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;});
+window.addEventListener('appinstalled',()=>{deferredPrompt=null;$('#installBtn').textContent='Installed';});
+$('#installBtn').onclick=()=>{
+  ['installReady','installHosted','installLocal'].forEach(id=>$('#'+id).classList.add('hidden'));
+  if(window.matchMedia('(display-mode: standalone)').matches){$('#installHosted').innerHTML='<p><strong>Arbitrage Radar is already installed.</strong></p>';$('#installHosted').classList.remove('hidden');}
+  else if(deferredPrompt) $('#installReady').classList.remove('hidden');
+  else if(location.protocol==='http:'||location.protocol==='https:') $('#installHosted').classList.remove('hidden');
+  else $('#installLocal').classList.remove('hidden');
+  installDialog.showModal();
+};
+$('#confirmInstallBtn').onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installDialog.close();};
+$('#closeInstall').onclick=()=>installDialog.close();
+if('serviceWorker' in navigator && (location.protocol==='http:'||location.protocol==='https:')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+const requestedView=new URLSearchParams(location.search).get('view');
+if(requestedView && ['dashboard','radar','nearby','hunt','inventory','tools','settings'].includes(requestedView)) setTimeout(()=>navigate(requestedView),0);
+
+renderAll();huntCalc();
+
+// V4 GPS Local Sourcing Radar. We open live map/search discovery instead of pretending
+// the static app has real-time business, sale-event or retailer inventory feeds.
+let lastGps=null;
+function sourceScore(source, radius){
+  const radiusPenalty=Math.max(0,(Number(radius)-10)*.18);
+  return Math.max(1,Math.min(99,Math.round(source.priority-radiusPenalty)));
+}
+function mapUrl(query,lat,lon){
+  return `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${lat},${lon},12z`;
+}
+function webSearchUrl(query,lat,lon){
+  // Google web search complements Maps for event-style sources like estate and garage sales.
+  return `https://www.google.com/search?q=${encodeURIComponent(query+' near '+lat.toFixed(3)+','+lon.toFixed(3))}`;
+}
+function sourceCard(source,latitude,longitude,radius){
+  const score=sourceScore(source,radius);
+  const eventLike=['estate','garage','auction'].includes(source.id);
+  const treasure=getTreasureTerms().slice(0,6).join(', ');
+  const aliases=source.queries.slice(0,4).map(q=>`<button class="mini-search" data-q="${escapeHtml(q)}" data-lat="${latitude}" data-lon="${longitude}">${escapeHtml(q)}</button>`).join('');
+  return `<article class="card source-card2"><div class="source-head"><div class="source-icon">${source.icon}</div><div><h3>${escapeHtml(source.name)}</h3><div class="meta">Discovery priority ${score}/100 · ${radius} mi radius</div></div></div><p>${escapeHtml(source.why)}</p>${eventLike?`<div class="signal"><strong>Treasure watch:</strong> ${escapeHtml(treasure)}</div>`:''}<div class="query-pills">${aliases}</div><div class="actions"><button class="primary source-search" data-id="${source.id}" data-lat="${latitude}" data-lon="${longitude}">Search live nearby</button>${eventLike?`<button class="ghost event-search" data-id="${source.id}" data-lat="${latitude}" data-lon="${longitude}">Search current listings</button>`:''}</div></article>`;
+}
+function bindLocalSearchButtons(){
+  $$('.source-search').forEach(b=>b.onclick=()=>{
+    const source=sourceCatalog.find(x=>x.id===b.dataset.id); if(!source)return;
+    window.open(mapUrl(source.queries[0],+b.dataset.lat,+b.dataset.lon),'_blank');
+  });
+  $$('.mini-search').forEach(b=>b.onclick=()=>window.open(mapUrl(b.dataset.q,+b.dataset.lat,+b.dataset.lon),'_blank'));
+  $$('.event-search').forEach(b=>b.onclick=()=>{
+    const source=sourceCatalog.find(x=>x.id===b.dataset.id); if(!source)return;
+    const terms=getTreasureTerms().slice(0,4).join(' ');
+    window.open(webSearchUrl(`${source.queries[0]} ${terms}`,+b.dataset.lat,+b.dataset.lon),'_blank');
+  });
+}
+function renderLocalSources(latitude,longitude){
+  const radius=$('#nearRadius').value;
+  const selected=$('#sourceType').value;
+  const sources=selected==='all'?sourceCatalog:sourceCatalog.filter(x=>x.id===selected);
+  $('#nearbyResults').innerHTML=sources.map(x=>sourceCard(x,latitude,longitude,radius)).join('');
+  bindLocalSearchButtons();
+}
+function gpsSearch(){
+  const status=$('#locationStatus');
+  if(!navigator.geolocation){status.textContent='Geolocation is not supported by this browser.';return;}
+  status.textContent='Getting your location…';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const {latitude,longitude}=pos.coords; lastGps={latitude,longitude}; const radius=$('#nearRadius').value;
+    status.innerHTML=`<strong>GPS ready.</strong> Searching a ${radius}-mile sourcing radius. Live results open in Maps/search so hours and business listings stay current.`;
+    renderLocalSources(latitude,longitude);
+  },err=>status.textContent=`Location unavailable: ${err.message}. Radar and Hunt Mode still work without GPS.` ,{enableHighAccuracy:true,timeout:10000,maximumAge:300000});
+}
+$('#gpsBtn')?.addEventListener('click',gpsSearch);
+$('#searchAreaBtn')?.addEventListener('click',()=>{if(lastGps)renderLocalSources(lastGps.latitude,lastGps.longitude); else gpsSearch();});
+$('#nearRadius')?.addEventListener('change',()=>{if(lastGps)renderLocalSources(lastGps.latitude,lastGps.longitude);});
+$('#sourceType')?.addEventListener('change',()=>{if(lastGps)renderLocalSources(lastGps.latitude,lastGps.longitude);});
+$('#saveTreasureBtn')?.addEventListener('click',()=>{
+  const terms=$('#treasureInput').value.split(',').map(x=>x.trim()).filter(Boolean).slice(0,20);
+  saveTreasureTerms(terms);renderTreasure(); if(lastGps)renderLocalSources(lastGps.latitude,lastGps.longitude);
+});
+renderTodaySources();renderTreasure();
+

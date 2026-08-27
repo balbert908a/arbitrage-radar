@@ -1,0 +1,71 @@
+{
+  "id": "./",
+  "name": "Arbitrage Radar V4",
+  "short_name": "Radar V4",
+  "description": "Retail arbitrage and local sourcing radar for clearance, return/bin stores, liquidation, estate sales, garage sales, flea markets, thrift stores and auctions.",
+  "start_url": "./index.html?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait-primary",
+  "background_color": "#0b0f17",
+  "theme_color": "#0c111b",
+  "categories": [
+    "business",
+    "shopping",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Clearance Radar",
+      "short_name": "Radar",
+      "url": "./index.html?view=radar",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Hunt Mode",
+      "short_name": "Hunt",
+      "url": "./index.html?view=hunt",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
