@@ -3,26 +3,31 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(n||0));
 const today=()=>new Date().toISOString().slice(0,10);
 const stateKey='arbitrageRadar21';
-let state={settings:{minProfit:15,minRoi:75,feePct:13.25},buys:[],imported:[]}, builtIn=[], gps=null;
+let state={settings:{minProfit:15,minRoi:75,feePct:13.25},buys:[],imported:[]}, builtIn=[], communitySignals=[], gps=null;
 
 function loadState(){try{state={...state,...JSON.parse(localStorage.getItem(stateKey)||'{}')};state.settings={minProfit:15,minRoi:75,feePct:13.25,...state.settings};}catch{}}
 function saveState(){localStorage.setItem(stateKey,JSON.stringify(state))}
 function go(id){$$('.view').forEach(v=>v.classList.toggle('active',v.id===id));$$('nav button').forEach(b=>b.classList.toggle('active',b.dataset.go===id));window.scrollTo(0,0)}
 function notExpired(o){return !o.expiresAt || o.expiresAt>=today()}
-function allOpps(){return [...builtIn,...state.imported].filter(notExpired)}
+function allOpps(){return [...builtIn,...communitySignals,...state.imported].filter(notExpired)}
 function ebaySold(q){return 'https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(q)+'&LH_Sold=1&LH_Complete=1'}
 function maps(q){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q+(gps?` near ${gps.lat.toFixed(5)},${gps.lon.toFixed(5)}`:' near me'))}
 function directions(a){return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(a)}
 
 async function loadFeed(){
   try{
-    const r=await fetch('./data/opportunities.json?ts='+Date.now(),{cache:'no-store'});
-    const data=await r.json();builtIn=data.opportunities||[];
-    $('#feedNote').textContent=`Evidence snapshot generated ${new Date(data.generatedAt).toLocaleString()}. Expired leads hide automatically.`;
-  }catch(e){$('#feedNote').textContent='Could not load the opportunity snapshot.'}
+    const [r,c]=await Promise.all([
+      fetch('./data/opportunities.json?ts='+Date.now(),{cache:'no-store'}),
+      fetch('./data/community_signals.json?ts='+Date.now(),{cache:'no-store'})
+    ]);
+    const data=await r.json(), comm=await c.json();
+    builtIn=(data.opportunities||[]).map(x=>({...x,evidenceType:x.evidenceType||((x.type==='event')?'LOCAL SALE':'RETAILER')}));
+    communitySignals=comm.signals||[];
+    $('#feedNote').textContent='Retailer, local-sale and community evidence loaded. Message-board reports are never treated as confirmed local stock.';
+  }catch(e){$('#feedNote').textContent='Could not load one or more evidence snapshots.'}
   renderAll();
 }
-function renderAll(){renderMetrics();renderFilters();renderOpps();renderBuys();renderNear();renderSettings()}
+function renderAll(){renderMetrics();renderFilters();renderOpps();renderCommunity();renderBuys();renderNear();renderSettings()}
 function renderMetrics(){
   const a=allOpps();$('#mHunt').textContent=a.filter(x=>x.decision==='HUNT').length;$('#mCheck').textContent=a.filter(x=>x.decision==='CHECK').length;$('#mFresh').textContent=a.filter(x=>x.observedAt===today()).length;$('#mBuys').textContent=state.buys.length;
 }
@@ -31,7 +36,7 @@ function renderFilters(){
   $('#filterRetailer').innerHTML='<option value="all">All sources</option>'+retailers.map(r=>`<option>${r}</option>`).join('');if(retailers.includes(cur))$('#filterRetailer').value=cur;
 }
 function card(o){
-  const imported=o.imported?'<span class="badge imported">IMPORTED</span>':'';
+  const imported=o.imported?'<span class="badge imported">IMPORTED</span>':''; const ev=o.imported?'IMPORTED':(o.evidenceType||'RETAILER');
   const price=o.observedPrice!=null?`<div class="price">${money(o.observedPrice)} <span class="opp-meta">${o.referencePrice!=null?`was ${money(o.referencePrice)}`:''}</span></div>`:'';
   const event=o.eventDates?`<div class="eventline">${o.eventDates}</div>`:'';
   const address=o.address?`<div class="opp-meta">${o.address}</div>`:'';
@@ -41,7 +46,7 @@ function card(o){
       <div class="opp-top"><div><strong>${o.retailer||'Source'}</strong><h3>${o.title}</h3></div><div class="source-line">${o.locationStatus||''}</div></div>
       ${price}${event}${address}
       <div class="evidence">${o.evidence||'Evidence not provided.'}</div>
-      <div class="source-line">Observed ${o.observedAt||'unknown'}${o.expiresAt?` · expires ${o.expiresAt}`:''} · ${o.sourceName||'source'}</div>
+      <div class="source-line"><b>${ev}</b> · Observed ${o.observedAt||'unknown'}${o.expiresAt?` · expires ${o.expiresAt}`:''} · ${o.sourceName||'source'}</div>
       <div class="actions">
         <button class="primary huntLead" data-id="${o.id}">Hunt this</button>
         <a class="ghost" href="${ebaySold(o.huntFor||o.title)}" target="_blank" rel="noopener">eBay sold</a>
@@ -52,8 +57,8 @@ function card(o){
   </article>`
 }
 function renderOpps(){
-  let a=allOpps();const d=$('#filterDecision').value,r=$('#filterRetailer').value;
-  if(d!=='all')a=a.filter(x=>x.decision===d);if(r!=='all')a=a.filter(x=>x.retailer===r);if($('#freshOnly').checked)a=a.filter(x=>x.observedAt===today());
+  let a=allOpps();const d=$('#filterDecision').value,r=$('#filterRetailer').value,e=$('#filterEvidence').value;
+  if(d!=='all')a=a.filter(x=>x.decision===d);if(r!=='all')a=a.filter(x=>x.retailer===r);if(e!=='all')a=a.filter(x=>(x.imported?'IMPORTED':(x.evidenceType||((x.type==='event')?'LOCAL SALE':'RETAILER')))===e);if($('#freshOnly').checked)a=a.filter(x=>x.observedAt===today());
   $('#opportunityList').innerHTML=a.length?a.map(card).join(''):'<div class="card empty">No unexpired evidence matches this filter.</div>';
   $$('.huntLead').forEach(b=>b.onclick=()=>{const o=allOpps().find(x=>x.id===b.dataset.id);if(!o)return;$('#huntItem').value=o.huntFor||o.title;$('#huntRetailer').value=o.retailer||'';if(o.observedPrice!=null)$('#buyPrice').value=o.observedPrice;updateSold();go('hunt')});
 }
@@ -65,6 +70,11 @@ function evaluate(){
   if(!buy||!resale){box.className='decision empty';box.innerHTML='Enter the real buy price and expected resale.';return}
   box.innerHTML=`<div class="big">${ok?'BUY':'PASS'}</div><p>Estimated net profit <b>${money(profit)}</b> · ROI <b>${Math.round(roi)}%</b></p><p>${ok?'Meets your minimum profit and ROI rules.':'Does not meet your current minimum profit/ROI rules.'}</p>${ok?'<button id="saveBuy" class="primary">Save as bought</button>':''}`;
   if(ok)$('#saveBuy').onclick=()=>{state.buys.unshift({id:'b'+Date.now(),item:$('#huntItem').value,retailer:$('#huntRetailer').value,store:$('#huntStore').value,buy,resale,ship,other,profit,roi,created:new Date().toISOString()});saveState();renderAll();go('buys')}
+}
+function renderCommunity(){
+  const el=$('#communityList');if(!el)return;const a=communitySignals.filter(notExpired);
+  el.innerHTML=a.length?a.map(card).join(''):'<div class="card empty">No unexpired community signals in this snapshot.</div>';
+  $$('#communityList .huntLead').forEach(b=>b.onclick=()=>{const o=communitySignals.find(x=>x.id===b.dataset.id);if(!o)return;$('#huntItem').value=o.huntFor||o.title;$('#huntRetailer').value=o.retailer||'';if(o.observedPrice!=null)$('#buyPrice').value=o.observedPrice;updateSold();go('hunt')});
 }
 function renderBuys(){
   $('#buyList').innerHTML=state.buys.length?state.buys.map(b=>`<article class="card buycard"><h3>${b.item||'Item'}</h3><div class="opp-meta">${b.retailer||''}${b.store?' · '+b.store:''}</div><div class="profit">${money(b.profit)} est. net</div><div class="opp-meta">Buy ${money(b.buy)} · resale ${money(b.resale)} · ROI ${Math.round(b.roi)}%</div></article>`).join(''):'<div class="card empty">No buys saved yet.</div>'
@@ -86,7 +96,7 @@ function importJson(file){
 
 loadState();
 $$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
-$('#reloadFeed').onclick=loadFeed;$('#filterDecision').onchange=renderOpps;$('#filterRetailer').onchange=renderOpps;$('#freshOnly').onchange=renderOpps;
+$('#reloadFeed').onclick=loadFeed;$('#filterDecision').onchange=renderOpps;$('#filterRetailer').onchange=renderOpps;$('#filterEvidence').onchange=renderOpps;$('#freshOnly').onchange=renderOpps;
 $('#useLocation').onclick=locate;$('#huntItem').oninput=updateSold;$('#evaluate').onclick=evaluate;
 $('#saveSettings').onclick=()=>{state.settings={minProfit:+$('#minProfit').value||0,minRoi:+$('#minRoi').value||0,feePct:+$('#feePct').value||0};saveState();renderSettings();alert('BUY/PASS rules saved.')};
 $('#importFile').onchange=e=>{if(e.target.files[0])importJson(e.target.files[0])};

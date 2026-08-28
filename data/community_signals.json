@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-08-28T09:33:00-04:00",
+  "signals": [
+    {
+      "id": "sd-car-fridge-20260825",
+      "type": "community_signal",
+      "decision": "CHECK",
+      "retailer": "Amazon",
+      "title": "EUHOMY 19qt 12V Car Refrigerator \u2013 YMMV coupon report",
+      "observedPrice": 76.66,
+      "locationStatus": "YMMV / ACCOUNT-DEPENDENT",
+      "observedAt": "2026-08-25",
+      "expiresAt": "2026-09-01",
+      "evidenceType": "SLICKDEALS",
+      "evidence": "Slickdeals reported $76.66 after a $25.96 code and explicitly noted the code may be account-dependent and stock varies by location/region.",
+      "huntFor": "EUHOMY 19qt 12 Volt Car Refrigerator",
+      "sourceUrl": "https://slickdeals.net/f/19917657-ymmv-19qt-euhomy-12-volt-car-refrigerator-77-free-s-h",
+      "sourceName": "Slickdeals community report",
+      "category": "community"
+    },
+    {
+      "id": "sd-walmart-codes-20260819",
+      "type": "community_signal",
+      "decision": "CHECK",
+      "retailer": "Walmart",
+      "title": "Walmart pickup/delivery promo codes \u2013 mixed community results",
+      "locationStatus": "TARGETED / YMMV",
+      "observedAt": "2026-08-19",
+      "expiresAt": "2026-08-31",
+      "evidenceType": "SLICKDEALS",
+      "evidence": "Slickdeals commenters reported several Walmart codes with mixed success and described them as YMMV/possibly targeted. Savings intelligence only, not a resale-item or local-inventory claim.",
+      "huntFor": "Walmart clearance",
+      "sourceUrl": "https://slickdeals.net/f/19886523-walmart-code-10-off-50-for-first-3-orders",
+      "sourceName": "Slickdeals community discussion",
+      "category": "community"
+    },
+    {
+      "id": "reddit-walmart-ra-20260608",
+      "type": "community_signal",
+      "decision": "CHECK",
+      "retailer": "Walmart",
+      "title": "Reddit discussion: Walmart clearance arbitrage and product cycles",
+      "locationStatus": "COMMUNITY STRATEGY",
+      "observedAt": "2026-06-08",
+      "expiresAt": "2026-09-08",
+      "evidenceType": "REDDIT",
+      "evidence": "A 2026 Reddit post discusses using product cycles and demand shifts to target Walmart clearance. It does not independently verify local inventory, so it remains community/strategy evidence.",
+      "huntFor": "Walmart clearance product cycle",
+      "sourceUrl": "https://www.reddit.com/r/MaximizeMe/comments/1u0gb96/the_secret_retail_arbitrage_method_making_me/",
+      "sourceName": "Reddit community discussion",
+      "category": "community"
+    }
+  ]
+}

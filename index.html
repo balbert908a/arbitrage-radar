@@ -11,7 +11,7 @@
 <body>
 <header>
   <div><div class="eyebrow">RETAIL ARBITRAGE</div><h1>Arbitrage Radar</h1></div>
-  <div class="version">RELEASE 2.1</div>
+  <div class="version">RELEASE 2.2</div>
 </header>
 
 <main>
@@ -41,9 +41,23 @@
   <div class="filters">
     <select id="filterDecision"><option value="all">HUNT + CHECK</option><option>HUNT</option><option>CHECK</option></select>
     <select id="filterRetailer"><option value="all">All sources</option></select>
+    <select id="filterEvidence"><option value="all">All evidence</option><option value="RETAILER">Retailer</option><option value="SLICKDEALS">Slickdeals</option><option value="REDDIT">Reddit</option><option value="LOCAL SALE">Local sale</option><option value="IMPORTED">Imported</option></select>
     <label class="check"><input type="checkbox" id="freshOnly"> Fresh today only</label>
   </div>
   <div id="opportunityList" class="cards"></div>
+</section>
+
+
+<section id="community" class="view">
+  <div class="section-head"><div><div class="eyebrow">MESSAGE-BOARD INTELLIGENCE</div><h2>Community Signals</h2>
+  <p>Slickdeals and Reddit are discovery evidence, not proof of local stock. Recent YMMV/location reports retain their source and date.</p></div></div>
+  <div class="card"><h3>Search live discussions</h3><div class="near-grid">
+    <a href="https://slickdeals.net/newsearch.php?q=clearance+YMMV" target="_blank" rel="noopener">Slickdeals clearance / YMMV<small>Open current discussions ↗</small></a>
+    <a href="https://www.reddit.com/search/?q=clearance%20retail%20arbitrage&sort=new" target="_blank" rel="noopener">Reddit clearance / arbitrage<small>Open newest discussions ↗</small></a>
+    <a href="https://slickdeals.net/newsearch.php?q=Home+Depot+clearance" target="_blank" rel="noopener">Slickdeals Home Depot<small>Search current posts ↗</small></a>
+    <a href="https://www.reddit.com/r/Flipping/search/?q=clearance&restrict_sr=1&sort=new" target="_blank" rel="noopener">r/Flipping clearance<small>Search newest posts ↗</small></a>
+  </div></div>
+  <div id="communityList" class="cards"></div>
 </section>
 
 <section id="nearby" class="view">
@@ -107,7 +121,7 @@
 </main>
 
 <nav>
-<button data-go="home">Home</button><button data-go="radar">Radar</button><button data-go="nearby">Near Me</button><button data-go="hunt">Hunt</button><button data-go="buys">Buys</button><button data-go="tools">Tools</button>
+<button data-go="home">Home</button><button data-go="radar">Radar</button><button data-go="community">Community</button><button data-go="nearby">Near Me</button><button data-go="hunt">Hunt</button><button data-go="buys">Buys</button><button data-go="tools">Tools</button>
 </nav>
 <script src="./app.js"></script>
 </body>
