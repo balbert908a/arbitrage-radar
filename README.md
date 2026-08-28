@@ -1,22 +1,30 @@
-# Arbitrage Radar — Release 2.0
+# Arbitrage Radar — Release 2.1
 
-Recommendation-engine release.
+Evidence engine release. Numeric opportunity scoring and priority numbers have been removed.
 
-Near Me is now recommendation-first. The broken embedded directory/map experience is no longer the primary workflow.
+## Core decisions
+- **HUNT** — specific merchandise/deal worth looking for based on current evidence.
+- **CHECK** — event/source worth investigating, but not enough item-level evidence yet.
+- **BUY / PASS** — only calculated in Hunt Mode from the actual shelf price, expected resale, fees, shipping, minimum profit and minimum ROI.
 
-## Working experience
-- Find opportunities near me → GPS → ranked recommendations.
-- Every sourcing category is a real working button.
-- Every retailer shortcut is a working Google Maps search.
-- Recommendation cards have working Directions / Live Search actions.
-- In northeastern Pennsylvania the app includes verified real sourcing locations for immediate recommendations: T.J. Maxx (Honesdale and Dickson City), Walmart (Honesdale and Dickson City), Home Depot Honesdale, Marshalls Dickson City, Burlington Dickson City, Lowe's Dickson City, and Ollie's Scranton.
-- Verified place does not mean live clearance inventory; Hunt Mode still verifies the item/price.
-- Multiple OpenStreetMap/Overpass endpoints are tried for additional current places; failure never blocks recommendations.
-- Estate/garage recommendations use Treasure Watch terms in live searches.
-- Personal Sourcing Intelligence boosts places that have produced profitable saved buys.
+## Current evidence
+Release 2.1 ships with a dated, expiring evidence snapshot containing current public leads from Walmart, TJ Maxx, Marshalls, Ollie's and current northeastern-PA estate/tag-sale listings. Every record carries:
+- source
+- observed date
+- expiration date
+- exact observed price when available
+- evidence explanation
+- direct source link
+- eBay sold-search action
+- local inventory warning when appropriate
 
-## Update reliability
-Core app files are now network-first, old service-worker caches are deleted on activation, and the new worker claims open clients immediately. This is intended to prevent mixed/stale releases.
+Expired evidence hides automatically rather than pretending it is still current.
+
+## No fake inventory
+Online Walmart/TJ Maxx/Marshalls prices are **HUNT leads**, not claims that your local store has that shelf price or quantity.
+
+## Extensible engine
+Tools can import additional JSON opportunity feeds using the same schema. This lets future permitted data sources plug into the same app without changing the interface.
 
 ## Update
-Upload everything inside this folder over the existing GitHub repository and commit to main.
+Upload everything inside this folder—including the new `data` folder—over the existing GitHub repository and commit to `main`.

@@ -1,367 +1,114 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0c111b" />
-  <meta name="description" content="Clearance Radar and retail arbitrage decision tool" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <link rel="stylesheet" href="styles.css" />
-  <title>Arbitrage Radar</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08111d">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./styles.css">
+<title>Arbitrage Radar</title>
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div>
-        <div class="eyebrow">RETAIL ARBITRAGE</div>
-        <h1>Arbitrage Radar</h1>
-      </div>
-      <button id="installBtn" class="ghost">Install app</button>
-    </header>
+<header>
+  <div><div class="eyebrow">RETAIL ARBITRAGE</div><h1>Arbitrage Radar</h1></div>
+  <div class="version">RELEASE 2.1</div>
+</header>
 
-    <main id="main">
-      <section id="dashboard" class="view active">
-        <div class="hero card">
-          <div>
-            <span class="pill hot">RELEASE 2.0</span>
-            <h2>Know where to hunt before you leave.</h2>
-            <p>Interactive sourcing map + expanded retailer intelligence + clearance + hunt mode + sold-comps links + routes + inventory.</p>
-          </div>
-          <button class="primary big" data-go="radar">Open Clearance Radar</button>
-        </div>
-
-        <div class="metrics" id="metrics"></div>
-        <div id="personalPriority" class="card personal-priority"></div>
-
-        <div class="section-head">
-          <div>
-            <h3>Best moves right now</h3>
-            <p>Ranked by expected profit, ROI, confidence and travel penalty.</p>
-          </div>
-          <button class="ghost" data-go="radar">See all</button>
-        </div>
-        <div id="topDeals" class="deal-list"></div>
-
-        <div class="section-head stacked-mobile">
-          <div><div class="eyebrow">TODAY</div><h3>Local sourcing channels</h3><p>GPS discovery across the places most likely to hide underpriced inventory.</p></div>
-          <button class="primary" data-go="nearby">Find local sourcing</button>
-        </div>
-        <div id="todaySources" class="source-strip"></div>
-      </section>
-
-      <section id="radar" class="view">
-        <div class="section-head stacked-mobile">
-          <div>
-            <div class="eyebrow">PRE-TRIP</div>
-            <h2>Clearance Radar</h2>
-            <p>Filter the feed, then let the score push the best stores to the top.</p>
-          </div>
-          <div class="actions">
-            <button class="ghost" id="importBtn">Import CSV</button>
-            <button class="primary" id="addDealBtn">+ Add find</button>
-          </div>
-        </div>
-
-        <div class="filterbar card">
-          <label>Mode
-            <select id="modeFilter">
-              <option value="all">All opportunities</option>
-              <option value="penny">Penny Watch</option>
-              <option value="70">70%+ clearance</option>
-              <option value="profit">Best Flip</option>
-              <option value="new">New Markdown</option>
-            </select>
-          </label>
-          <label>Retailer
-            <select id="retailerFilter">
-              <option value="all">All retailers</option>
-            </select>
-          </label>
-          <label>Min profit
-            <input id="minProfitFilter" type="number" min="0" value="15" />
-          </label>
-          <label>Max miles
-            <input id="maxMilesFilter" type="number" min="0" value="35" />
-          </label>
-        </div>
-
-        <div id="radarDeals" class="deal-list"></div>
-      </section>
-
-      <section id="hunt" class="view">
-        <div class="section-head">
-          <div>
-            <div class="eyebrow">IN-STORE</div>
-            <h2>Hunt Mode</h2>
-            <p>Barcode when you have one. Photo/manual identification when you don’t.</p>
-          </div>
-        </div>
-
-        <div class="hunt-grid">
-          <div class="card">
-            <h3>Identify the item</h3>
-            <label>Barcode / UPC
-              <div class="inline-input">
-                <input id="huntBarcode" inputmode="numeric" placeholder="Scan or type UPC" />
-                <button class="ghost" id="scanBtn">Scan</button>
-              </div>
-            </label>
-            <label>Item / keywords
-              <input id="huntName" placeholder="e.g. Milwaukee M12 light" />
-            </label>
-            <div class="two-col">
-              <label>Retailer / source
-                <input id="huntRetailer" list="retailerNames" placeholder="e.g. Walmart, TJ Maxx" />
-              </label>
-              <label>Store / location
-                <input id="huntStore" placeholder="e.g. Dickson City" />
-              </label>
-            </div>
-            <datalist id="retailerNames">
-              <option>Walmart</option><option>TJ Maxx</option><option>Marshalls</option>
-              <option>Burlington</option><option>Ross Dress for Less</option><option>Ollie's Bargain Outlet</option>
-              <option>Home Depot</option><option>Lowe's</option><option>Target</option><option>Dollar General</option>
-              <option>Five Below</option><option>Dollar Tree</option><option>Walgreens</option><option>CVS</option>
-            </datalist>
-            <label>Photo
-              <input id="photoInput" type="file" accept="image/*" capture="environment" />
-            </label>
-            <div id="photoPreview" class="photo-preview hidden"></div>
-            <p class="micro">Photo mode keeps a visual record. Use keywords or UPC to pull current sold-listing evidence before buying.</p>
-            <div class="actions"><button class="ghost" id="soldCompsBtn">Search eBay sold comps</button><button class="ghost" id="activeListingsBtn">Check active listings</button></div>
-          </div>
-
-          <div class="card">
-            <h3>Flip math</h3>
-            <div class="two-col">
-              <label>Buy price $<input id="buyPrice" type="number" step="0.01" value="5" /></label>
-              <label>Expected sale $<input id="salePrice" type="number" step="0.01" value="30" /></label>
-              <label>Shipping paid $<input id="shippingCost" type="number" step="0.01" value="6" /></label>
-              <label>Other cost $<input id="otherCost" type="number" step="0.01" value="0" /></label>
-            </div>
-            <button class="primary wide" id="calculateBtn">Calculate BUY / PASS</button>
-            <div id="verdict" class="verdict"></div>
-            <div class="actions">
-              <button id="saveInventoryBtn" class="ghost">Save as bought</button>
-              <button id="saveWatchBtn" class="ghost">Watch item</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="inventory" class="view">
-        <div class="section-head stacked-mobile">
-          <div>
-            <div class="eyebrow">AFTER THE BUY</div>
-            <h2>Inventory & Listing Prep</h2>
-            <p>Track buys and generate a clean eBay-ready title/description starter.</p>
-          </div>
-        </div>
-        <div id="inventoryList" class="inventory-list"></div>
-      </section>
-
-
-      
-<section id="nearby" class="view">
-  <div class="section-head stacked-mobile">
-    <div>
-      <div class="eyebrow">GPS SOURCING</div>
-      <h2>Local Sourcing Radar</h2>
-      <p>Get ranked places and sourcing moves around your current location. Recommendations come first; maps are used for directions.</p>
-    </div>
-    <button class="primary big" id="v2LocateBtn" type="button">Find opportunities near me</button>
+<main>
+<section id="home" class="view active">
+  <div class="hero">
+    <div class="eyebrow">TODAY'S OPPORTUNITIES</div>
+    <h2>What should I actually hunt?</h2>
+    <p>Specific merchandise and events backed by current evidence. No fake inventory. No arbitrary scores.</p>
+    <button class="primary" data-go="radar">Show opportunities</button>
   </div>
-
-  <div id="v2GpsStatus" class="gps-status-card">
-    <div><span class="status-dot waiting" id="v2GpsDot"></span><strong id="v2GpsTitle">Location not requested</strong></div>
-    <small id="v2GpsDetail">Tap Find opportunities near me. If GPS is unavailable, retailer and category searches still work.</small>
+  <div class="metrics">
+    <div><strong id="mHunt">0</strong><span>HUNT leads</span></div>
+    <div><strong id="mCheck">0</strong><span>CHECK leads</span></div>
+    <div><strong id="mFresh">0</strong><span>fresh today</span></div>
+    <div><strong id="mBuys">0</strong><span>saved buys</span></div>
   </div>
-
-  <div class="filterbar local-filter card v2-filter">
-    <label>Radius
-      <select id="v2Radius"><option value="5">5 miles</option><option value="10">10 miles</option><option value="25" selected>25 miles</option><option value="50">50 miles</option></select>
-    </label>
-    <label>Show
-      <select id="v2Source">
-        <option value="all">All opportunities</option>
-        <option value="clearance">Retail clearance</option>
-        <option value="returns">Return & bin stores</option>
-        <option value="liquidation">Liquidation / overstock</option>
-        <option value="estate">Estate sales</option>
-        <option value="garage">Garage / yard sales</option>
-        <option value="flea">Flea markets</option>
-        <option value="thrift">Thrift stores</option>
-        <option value="auction">Auctions</option>
-      </select>
-    </label>
-    <button class="ghost" id="v2RefreshBtn" type="button">Refresh recommendations</button>
+  <div class="card explainer">
+    <h3>Decision labels</h3>
+    <p><b>HUNT</b> = a specific item/deal worth looking for. <b>CHECK</b> = a source/event worth investigating. <b>BUY/PASS</b> only appears after you enter the real shelf price and resale economics in Hunt Mode.</p>
   </div>
-
-  <div class="card v2-quick-card">
-    <div class="section-head compact"><div><div class="eyebrow">TAP TO FILTER</div><h3>Sourcing categories</h3></div></div>
-    <div id="v2CategoryGrid" class="v2-category-grid"></div>
-  </div>
-
-  <div class="section-head">
-    <div><div class="eyebrow">RANKED FOR YOU</div><h2>Recommended next moves</h2><p id="v2RecommendationNote">Use your location to load local recommendations.</p></div>
-  </div>
-  <div id="v2Recommendations" class="v2-recommendations">
-    <div class="empty">Tap <strong>Find opportunities near me</strong> to get recommendations.</div>
-  </div>
-
-  <div class="card v2-search-card">
-    <div class="section-head compact"><div><div class="eyebrow">LIVE SEARCH</div><h3>Search a specific retailer</h3></div></div>
-    <div id="v2RetailerGrid" class="v2-retailer-grid"></div>
-  </div>
-
-  <div class="card sourcing-history-card">
-    <div class="section-head compact"><div><div class="eyebrow">YOUR RESULTS</div><h3>My Sourcing Intelligence</h3></div></div>
-    <p class="muted">As you save buys in Hunt Mode, stores that actually produce profit move higher in your recommendations.</p>
-    <div id="sourcingHistory" class="sourcing-history"></div>
-  </div>
-
-  <div class="card treasure-card"><div><h3>Treasure Watches</h3><p>These terms are carried into estate/garage/flea searches.</p></div><div class="inline-input"><input id="treasureInput" placeholder="sterling, watches, tools, toys..."/><button id="saveTreasureBtn" class="ghost">Save</button></div><div id="treasureChips" class="chips"></div></div>
 </section>
 
-      <section id="tools" class="view"><div class="section-head"><div><div class="eyebrow">RESELLER OS</div><h2>Intelligence Tools</h2><p>The complete workflow around the buy.</p></div></div><div class="tool-grid">
-      <div class="card tool-card"><h3>Sold Comps</h3><p>Jump directly to completed/sold eBay listings using the UPC or keywords from Hunt Mode.</p><button class="ghost" id="toolCompsBtn">Open sold comps</button></div>
-      <div class="card tool-card"><h3>Unknown Treasure</h3><p>Capture marks, signatures, labels and model numbers without forcing an identification.</p><button class="ghost" data-go="hunt">Open camera</button></div>
-      <div class="card tool-card"><h3>Auction Analyzer</h3><p>Track lot cost, buyer premium, expected resale and your maximum profitable bid.</p><span class="status pending">URL connector next</span></div>
-      <div class="card tool-card"><h3>Trip Planner</h3><p>Save live local businesses to a route and open the multi-stop trip in Google Maps.</p><button class="ghost" data-go="nearby">Build route</button></div>
-      <div class="card tool-card"><h3>Profit & Death-Pile</h3><p>Track purchased inventory and make marginal buys less attractive as unlisted inventory grows.</p><button class="ghost" data-go="inventory">View buys</button></div>
-      <div class="card tool-card"><h3>Personal Buy Model</h3><p>Future scoring learns from your actual sales, returns, shipping costs and time-to-sell.</p><span class="status pending">Learns from sales data</span></div></div></section>
-      <section id="settings" class="view">
-        <div class="section-head">
-          <div><div class="eyebrow">RULES</div><h2>Settings</h2><p>Make the score reflect how you actually source.</p></div>
-        </div>
-        <div class="card settings-card">
-          <div class="two-col">
-            <label>Minimum profit $<input id="settingMinProfit" type="number" min="0" /></label>
-            <label>Minimum ROI %<input id="settingMinRoi" type="number" min="0" /></label>
-            <label>Max buy price $<input id="settingMaxBuy" type="number" min="0" /></label>
-            <label>Marketplace fee %<input id="settingFee" type="number" min="0" step="0.01" /></label>
-            <label>Default radius miles<input id="settingRadius" type="number" min="1" /></label>
-            <label>Travel penalty $/mile<input id="settingTravel" type="number" min="0" step="0.01" /></label>
-          </div>
-          <label>Preferred categories
-            <input id="settingCategories" placeholder="toys, tools, electronics..." />
-          </label>
-          <label>Exclude / down-rank
-            <input id="settingExclude" placeholder="oversized, freight..." />
-          </label>
-          <div class="actions">
-            <button class="primary" id="saveSettingsBtn">Save settings</button>
-            <button class="ghost" id="clearDealsBtn">Clear clearance data</button>
-          </div>
-        </div>
-
-        <div class="card source-card">
-          
-
-<div class="card">
-  <h3>Retailer strategy</h3>
-  <p class="muted">No retailer partnership is required. Radar combines your own sourcing history, GPS destinations, permitted feeds, and in-store verification.</p>
-  <div class="evidence-legend">
-    <span class="evidence live-store">LIVE STORE PRICE</span>
-    <span class="evidence lead">ONLINE CLEARANCE LEAD</span>
-    <span class="evidence local">LOCAL SOURCE</span>
-    <span class="evidence manual">MANUAL</span>
-    <span class="evidence verify">VERIFY IN STORE</span>
+<section id="radar" class="view">
+  <div class="section-head"><div><div class="eyebrow">EVIDENCE FIRST</div><h2>Opportunity Radar</h2><p id="feedNote">Loading current evidence…</p></div>
+    <button id="reloadFeed" class="ghost">Reload feed</button>
   </div>
-  <div class="retailer-grid">
-    <div><strong>Lowe's</strong><small>GPS + Hunt Mode + your own sourcing history. No partner onboarding required.</small></div>
-    <div><strong>Walmart</strong><small>Priority retailer. GPS + Hunt Mode + permitted feed connector; no fake shelf inventory.</small></div>
-    <div><strong>TJ Maxx / Marshalls</strong><small>Online clearance intelligence + verify in store.</small></div>
-    <div><strong>Burlington</strong><small>Clearance leads + verify local price/availability.</small></div>
-    <div><strong>Ollie's</strong><small>Buyout/deal leads + local verification.</small></div>
-    <div><strong>Ross</strong><small>GPS destination + Hunt Mode.</small></div>
-    <div><strong>Home Depot / Target</strong><small>Hunt Mode + permitted external intelligence only.</small></div>
-    <div><strong>eBay</strong><small>Sold/completed search evidence + active-listing search from Hunt Mode.</small></div>
+  <div class="filters">
+    <select id="filterDecision"><option value="all">HUNT + CHECK</option><option>HUNT</option><option>CHECK</option></select>
+    <select id="filterRetailer"><option value="all">All sources</option></select>
+    <label class="check"><input type="checkbox" id="freshOnly"> Fresh today only</label>
   </div>
-</div>
-<div class="card">
-  <h3>Live clearance feed</h3>
-  <p class="muted">Connect a JSON or CSV feed you control or are permitted to use. Walmart is a priority source here whenever a permitted local-price feed becomes available. LIVE results are timestamped and kept separate from manual/imported data. Retailer websites are not scraped by this app.</p>
-  <label>Feed URL
-    <input id="feedUrlInput" type="url" placeholder="https://example.com/clearance-feed.json">
-  </label>
-  <div class="row-actions">
-    <button id="saveFeedUrlBtn" type="button">Save feed URL</button>
-    <button id="refreshFeedBtn" type="button">Refresh feed now</button>
+  <div id="opportunityList" class="cards"></div>
+</section>
+
+<section id="nearby" class="view">
+  <div class="section-head"><div><div class="eyebrow">WHERE TO GO</div><h2>Near Me</h2><p>Location search supports the opportunity feed; it does not pretend a store has a specific item.</p></div>
+    <button id="useLocation" class="primary">Use my location</button>
   </div>
-</div>
-<h3>Data sources</h3><div class="production-note"><strong>Production mode:</strong> no demo opportunities are loaded. Clearance cards appear only from manual entries or imported feeds; live local results are separately sourced and labeled.</div>
-          <p>This release supports manual/CSV clearance feeds, live GPS business discovery from OpenStreetMap data, current Maps/web event searches, eBay sold/completed searches, route planning and offline install. Retailer-specific price/inventory feeds can still be added later without changing the app structure.</p>
-          <div class="source-row"><span>Manual / crowdsourced</span><span class="status ready">Ready</span></div>
-          <div class="source-row"><span>CSV deal feed</span><span class="status ready">Ready</span></div>
-          <div class="source-row"><span>Live local business discovery</span><span class="status ready">Ready</span></div>
-          <div class="source-row"><span>eBay sold/completed search</span><span class="status ready">Ready</span></div>
-          <div class="source-row"><span>Offline app shell</span><span class="status ready">Ready</span></div>
-        </div>
-      </section>
-    </main>
+  <div id="gpsBox" class="card status">GPS not requested.</div>
+  <div id="nearLinks" class="near-grid"></div>
+</section>
 
-    <nav class="bottom-nav">
-      <button class="nav-btn active" data-go="dashboard"><span>⌂</span>Home</button>
-      <button class="nav-btn" data-go="radar"><span>⌖</span>Radar</button>
-      <button class="nav-btn" data-go="nearby"><span>◉</span>Near Me</button>
-      <button class="nav-btn hunt-nav" data-go="hunt"><span>◎</span>Hunt</button>
-      <button class="nav-btn" data-go="inventory"><span>▣</span>Buys</button>
-      <button class="nav-btn" data-go="tools"><span>◆</span>Tools</button>
-    </nav>
-  </div>
-
-  <dialog id="dealDialog">
-    <form method="dialog" id="dealForm">
-      <div class="dialog-head"><h3>Add clearance find</h3><button value="cancel" class="icon-btn">×</button></div>
-      <div class="two-col">
-        <label>Retailer<input name="retailer" required placeholder="Home Depot" /></label>
-        <label>Store / location<input name="store" required placeholder="Dickson City #4120" /></label>
-        <label>Item<input name="item" required placeholder="Product name" /></label>
-        <label>Category<input name="category" placeholder="tools" /></label>
-        <label>Regular price $<input name="regularPrice" required type="number" step="0.01" /></label>
-        <label>Clearance price $<input name="clearancePrice" required type="number" step="0.01" /></label>
-        <label>Expected resale $<input name="resalePrice" required type="number" step="0.01" /></label>
-        <label>Est. shipping $<input name="shipping" type="number" step="0.01" value="6" /></label>
-        <label>Est. quantity<input name="quantity" type="number" value="1" min="0" /></label>
-        <label>Miles away<input name="miles" type="number" step="0.1" value="5" /></label>
-        <label>Confidence<select name="confidence"><option>High</option><option>Medium</option><option>Low</option></select></label>
-        <label>UPC<input name="upc" /></label>
-      </div>
-      <label class="check"><input type="checkbox" name="newMarkdown" /> New markdown</label>
-      <div class="actions end"><button value="cancel" class="ghost">Cancel</button><button id="submitDeal" value="default" class="primary">Save find</button></div>
-    </form>
-  </dialog>
-
-  <dialog id="scanDialog">
-    <div class="dialog-head"><h3>Barcode scanner</h3><button id="closeScanner" class="icon-btn">×</button></div>
-    <video id="scannerVideo" autoplay playsinline></video>
-    <p id="scannerStatus" class="micro">Starting camera…</p>
-  </dialog>
-
-
-  <dialog id="installDialog">
-    <div class="dialog-head"><h3>Install Arbitrage Radar</h3><button id="closeInstall" class="icon-btn">×</button></div>
-    <div id="installReady" class="install-panel hidden">
-      <p>Arbitrage Radar is ready to install as an app on this device.</p>
-      <button id="confirmInstallBtn" class="primary wide">Install Arbitrage Radar</button>
+<section id="hunt" class="view">
+  <div class="section-head"><div><div class="eyebrow">IN STORE</div><h2>Hunt Mode</h2><p>Confirm the real item, real shelf price and resale evidence. Then get BUY or PASS.</p></div></div>
+  <div class="card form-card">
+    <label>Item / UPC<input id="huntItem" placeholder="Scan or type item"></label>
+    <div class="two">
+      <label>Retailer<input id="huntRetailer" placeholder="Walmart, TJ Maxx…"></label>
+      <label>Store/location<input id="huntStore" placeholder="Dickson City"></label>
     </div>
-    <div id="installHosted" class="install-panel hidden">
-      <p><strong>Android / Chrome:</strong> open Chrome's menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</p>
-      <p class="micro">The app will launch full-screen and its core interface will work offline after the first load.</p>
+    <div class="two">
+      <label>Actual buy price<input id="buyPrice" type="number" min="0" step=".01" placeholder="0.00"></label>
+      <label>Expected resale<input id="resalePrice" type="number" min="0" step=".01" placeholder="0.00"></label>
     </div>
-    <div id="installLocal" class="install-panel hidden">
-      <p>This copy is running as a local file. Android will let you test it, but Chrome cannot install a PWA until the folder is served from an HTTPS web address.</p>
-      <p class="micro">Use the included V2 deployment package on any HTTPS static host. Then open that address in Chrome and tap Install app.</p>
+    <div class="two">
+      <label>Shipping<input id="shipping" type="number" min="0" step=".01" value="6.50"></label>
+      <label>Other costs<input id="otherCosts" type="number" min="0" step=".01" value="0"></label>
     </div>
-  </dialog>
+    <div class="actions">
+      <a id="soldComps" class="ghost" target="_blank" rel="noopener">Search eBay sold comps</a>
+      <button id="evaluate" class="primary">Evaluate</button>
+    </div>
+  </div>
+  <div id="decisionBox" class="decision empty">Enter the real buy price and expected resale.</div>
+</section>
 
-  <input id="csvInput" type="file" accept=".csv,text/csv" class="hidden" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="app.js"></script>
+<section id="buys" class="view">
+  <div class="section-head"><div><div class="eyebrow">INVENTORY</div><h2>Saved Buys</h2></div></div>
+  <div id="buyList" class="cards"></div>
+</section>
+
+<section id="tools" class="view">
+  <div class="section-head"><div><div class="eyebrow">SETTINGS</div><h2>Tools</h2></div></div>
+  <div class="card form-card">
+    <h3>BUY/PASS rules</h3>
+    <div class="two">
+      <label>Minimum net profit<input id="minProfit" type="number" min="0" step="1"></label>
+      <label>Minimum ROI %<input id="minRoi" type="number" min="0" step="5"></label>
+    </div>
+    <label>Estimated eBay fee %<input id="feePct" type="number" min="0" step=".1"></label>
+    <button id="saveSettings" class="primary">Save rules</button>
+  </div>
+  <div class="card">
+    <h3>Import opportunity feed</h3>
+    <p>Import a JSON file using the same evidence format as the built-in feed. Imported records are labeled IMPORTED and never treated as store-confirmed inventory.</p>
+    <input id="importFile" type="file" accept=".json,application/json">
+  </div>
+  <div class="card">
+    <h3>What this release does not claim</h3>
+    <p>It does not claim hidden Walmart/Home Depot/TJ Maxx shelf inventory. Public online markdowns are leads to hunt. The shelf price you see in person is what drives BUY/PASS.</p>
+  </div>
+</section>
+</main>
+
+<nav>
+<button data-go="home">Home</button><button data-go="radar">Radar</button><button data-go="nearby">Near Me</button><button data-go="hunt">Hunt</button><button data-go="buys">Buys</button><button data-go="tools">Tools</button>
+</nav>
+<script src="./app.js"></script>
 </body>
 </html>
