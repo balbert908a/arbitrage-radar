@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: arbitrage-radar-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5.6-luna
+      - key: ALLOWED_ORIGINS
+        sync: false

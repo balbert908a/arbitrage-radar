@@ -6,7 +6,7 @@ const today = () => new Date().toISOString().slice(0,10);
 const stateKey = 'arbitrageRadar23';
 
 let state = {
-  settings:{minProfit:15,minRoi:75,feePct:13.25},
+  settings:{minProfit:15,minRoi:75,feePct:13.25,backendUrl:''},
   buys:[],
   imported:[],
   scans:[],
@@ -23,7 +23,7 @@ function loadState(){
   try{
     const saved = JSON.parse(localStorage.getItem(stateKey)||'{}');
     state = {...state,...saved};
-    state.settings = {minProfit:15,minRoi:75,feePct:13.25,...(saved.settings||{})};
+    state.settings = {minProfit:15,minRoi:75,feePct:13.25,backendUrl:'',...(saved.settings||{})};
     state.buys = saved.buys||[];
     state.imported = saved.imported||[];
     state.scans = saved.scans||[];
@@ -44,6 +44,67 @@ function googleQ(q){ return 'https://www.google.com/search?q='+encodeURIComponen
 function maps(q){ return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q+(gps?` near ${gps.lat.toFixed(5)},${gps.lon.toFixed(5)}`:' near me')); }
 function directions(a){ return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(a); }
 
+
+function backendBase(){
+  return (state.settings.backendUrl||'').trim().replace(/\/+$/,'');
+}
+async function apiCall(path, options={}){
+  const base=backendBase();
+  if(!base) throw new Error('Set the backend URL in Tools first.');
+  const res=await fetch(base+path, options);
+  let body={};
+  try{ body=await res.json(); }catch{}
+  if(!res.ok) throw new Error(body.detail||body.error||('Backend error '+res.status));
+  return body;
+}
+function showProductResult(target, data){
+  const p=data.product||data;
+  const title=p.title||p.name||'Product identified';
+  const brand=p.brand?`<div class="opp-meta">Brand: ${p.brand}</div>`:'';
+  const ids=[p.upc&&`UPC ${p.upc}`,p.ean&&`EAN ${p.ean}`,p.asin&&`ASIN ${p.asin}`,p.model&&`Model ${p.model}`].filter(Boolean).join(' · ');
+  const conf=p.confidence?`<div class="opp-meta">Identification confidence: ${p.confidence}</div>`:'';
+  const resale=data.resale||{};
+  let resaleHtml='';
+  if(resale.status){
+    const sold=(resale.sold_prices||[]).map(x=>money(x)).join(', ');
+    resaleHtml=`<div class="analysis-resale"><b>Resale evidence: ${resale.status}</b>
+      ${sold?`<div>Observed sold prices: ${sold}</div>`:''}
+      ${resale.typical_sold!=null?`<div>Typical sold: <b>${money(resale.typical_sold)}</b></div>`:''}
+      ${resale.note?`<div class="opp-meta">${resale.note}</div>`:''}</div>`;
+  }
+  target.innerHTML=`<div class="identified"><h3>${title}</h3>${brand}${ids?`<div class="opp-meta">${ids}</div>`:''}${conf}${resaleHtml}</div>`;
+  if(title && !$('#huntItem').value.trim()) $('#huntItem').value=title;
+  if(p.upc && !$('#huntBarcode').value.trim()) $('#huntBarcode').value=p.upc;
+  if(resale.typical_sold!=null) $('#resalePrice').value=resale.typical_sold;
+  updateSearchLinks();
+}
+async function identifyBarcodeWithBackend(){
+  const code=$('#huntBarcode').value.trim();
+  if(!code) return;
+  const el=$('#barcodeResult'); el.innerHTML='<div class="opp-meta">Identifying product and researching resale evidence…</div>';
+  try{
+    const data=await apiCall('/api/identify/barcode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    showProductResult(el,data);
+  }catch(e){ el.innerHTML=`<div class="error-text">${e.message}</div>`; }
+}
+async function identifyPhotoWithBackend(){
+  if(!currentPhotoData) return;
+  const el=$('#photoResult'); el.innerHTML='<div class="opp-meta">Analyzing image and researching resale evidence…</div>';
+  try{
+    const data=await apiCall('/api/identify/photo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_data_url:currentPhotoData})});
+    showProductResult(el,data);
+    $('#photoGoogle').hidden=false; $('#photoEbay').hidden=false;
+    const q=($('#huntItem').value||'').trim();
+    $('#photoGoogle').href=googleQ(q); $('#photoEbay').href=ebaySold(q);
+  }catch(e){ el.innerHTML=`<div class="error-text">${e.message}</div>`; }
+}
+async function testBackend(){
+  const status=$('#backendStatus'); status.textContent='Testing…';
+  try{
+    const data=await apiCall('/api/health');
+    status.textContent='Connected: '+(data.status||'ok')+(data.openai_configured?' · AI ready':' · AI key missing');
+  }catch(e){ status.textContent='Connection failed: '+e.message; }
+}
 async function loadFeed(){
   try{
     const [r,c] = await Promise.all([
@@ -276,6 +337,7 @@ function renderSettings(){
   $('#minProfit').value=state.settings.minProfit;
   $('#minRoi').value=state.settings.minRoi;
   $('#feePct').value=state.settings.feePct;
+  if($('#backendUrl')) $('#backendUrl').value=state.settings.backendUrl||'';
 }
 
 function locate(){
@@ -334,16 +396,22 @@ $('#fillGpsStore').onclick=useGpsForStore;
 
 $('#takePhoto').onclick=()=>{const f=$('#photoInput');f.value='';f.click();};
 $('#retakePhoto').onclick=()=>{const f=$('#photoInput');f.value='';f.click();};
-$('#analyzePhoto').onclick=()=>{const box=$('#photoAnalysis');box.hidden=false;const q=$('#photoClue').value.trim()||$('#huntItem').value.trim()||'identify product from photo';$('#photoGoogle').href=googleQ(q);$('#photoEbay').href=ebaySold(q);$('#photoClue').focus();};
-$('#photoClue').oninput=()=>{const q=$('#photoClue').value.trim()||'identify product';$('#photoGoogle').href=googleQ(q);$('#photoEbay').href=ebaySold(q);};
-$('#usePhotoClue').onclick=()=>{const q=$('#photoClue').value.trim();if(!q){$('#photoAnalysisText').textContent='Enter the brand or words visible on the item first.';return}$('#huntItem').value=q;updateSearchLinks();$('#photoAnalysisText').textContent='Identification added to the item workflow. Check sold comps, then enter the actual shelf price.';$('#huntItem').scrollIntoView({behavior:'smooth',block:'center'});};
+
+
+
 
 $('#photoInput').onchange=e=>handlePhoto(e.target.files?.[0]);
-$('#clearPhoto').onclick=()=>{currentPhotoData=null;$('#photoInput').value='';$('#photoBox').hidden=true;$('#photoAnalysis').hidden=true;$('#photoClue').value='';$('#photoPreview').removeAttribute('src');};
+$('#clearPhoto').onclick=()=>{currentPhotoData=null;$('#photoInput').value='';$('#photoBox').hidden=true;$('#photoAnalysis').hidden=true;$('#photoResult').innerHTML='';$('#photoPreview').removeAttribute('src');};
 $('#continueItem').onclick=()=>{$('#huntItem').focus();$('#huntItem').scrollIntoView({behavior:'smooth',block:'center'});};
+$('#identifyBarcodeBackend').onclick=identifyBarcodeWithBackend;
+$('#analyzePhoto').onclick=()=>{$('#photoAnalysis').hidden=false;};
+$('#analyzePhotoBackend').onclick=identifyPhotoWithBackend;
+$('#saveBackend').onclick=()=>{state.settings.backendUrl=$('#backendUrl').value.trim();saveState();$('#backendStatus').textContent='Backend URL saved.';};
+$('#testBackend').onclick=()=>{state.settings.backendUrl=$('#backendUrl').value.trim();saveState();testBackend();};
+
 
 $('#saveSettings').onclick=()=>{
-  state.settings={minProfit:+$('#minProfit').value||0,minRoi:+$('#minRoi').value||0,feePct:+$('#feePct').value||0};
+  state.settings={...state.settings,minProfit:+$('#minProfit').value||0,minRoi:+$('#minRoi').value||0,feePct:+$('#feePct').value||0};
   saveState(); renderSettings(); alert('BUY/PASS rules saved.');
 };
 $('#importFile').onchange=e=>{if(e.target.files[0])importJson(e.target.files[0]);};

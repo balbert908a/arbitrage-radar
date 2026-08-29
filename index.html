@@ -11,7 +11,7 @@
 <body>
 <header>
   <div><div class="eyebrow">RETAIL ARBITRAGE</div><h1>Arbitrage Radar</h1></div>
-  <div class="version">RELEASE 2.6</div>
+  <div class="version">RELEASE 3.0</div>
 </header>
 
 <main>
@@ -88,15 +88,28 @@
 <video id="scanVideo" playsinline muted hidden></video><canvas id="scanCanvas" hidden></canvas>
 <input id="photoInput" class="photo-input" type="file" accept="image/*" capture="environment" aria-label="Choose or take item photo">
 <div id="scanStatus" class="scan-status">Ready to scan.</div>
-<div id="scanResultActions" class="scan-result-actions" hidden><div class="detected-code">Detected: <b id="detectedCode"></b></div><div class="actions"><a id="scanGoogle" class="primary" target="_blank" rel="noopener">Identify UPC</a><a id="scanEbaySold" class="ghost" target="_blank" rel="noopener">eBay sold</a><button id="continueItem" class="ghost">Continue below</button></div></div>
+<div id="scanResultActions" class="scan-result-actions" hidden>
+  <div class="detected-code">Detected: <b id="detectedCode"></b></div>
+  <div id="barcodeResult"></div>
+  <div class="actions">
+    <button id="identifyBarcodeBackend" class="primary">Identify product</button>
+    <a id="scanGoogle" class="ghost" target="_blank" rel="noopener">Web search</a>
+    <a id="scanEbaySold" class="ghost" target="_blank" rel="noopener">eBay sold</a>
+    <button id="continueItem" class="ghost">Continue below</button>
+  </div>
+</div>
 <div id="photoBox" hidden>
 <img id="photoPreview" class="photo-preview" alt="Captured item photo">
 <div class="actions"><button id="analyzePhoto" class="primary">Identify from photo</button><button id="retakePhoto" class="ghost">Retake photo</button><button id="clearPhoto" class="ghost">Remove photo</button></div>
 <div id="photoAnalysis" class="analysis-box" hidden>
-<b>Photo ready for identification</b>
-<p id="photoAnalysisText">Add a short visible brand/product clue below. The app will build product and resale searches from the photo record.</p>
-<label>Brand / words visible on item<input id="photoClue" placeholder="Example: Aqueon Betta Food"></label>
-<div class="actions"><button id="usePhotoClue" class="primary">Use this identification</button><a id="photoGoogle" class="ghost" target="_blank" rel="noopener">Search product</a><a id="photoEbay" class="ghost" target="_blank" rel="noopener">eBay sold</a></div>
+  <b>AI product identification</b>
+  <p id="photoAnalysisText">Send this photo to your private backend to identify the product and research resale evidence.</p>
+  <div id="photoResult"></div>
+  <div class="actions">
+    <button id="analyzePhotoBackend" class="primary">Analyze photo</button>
+    <a id="photoGoogle" class="ghost" target="_blank" rel="noopener" hidden>Search product</a>
+    <a id="photoEbay" class="ghost" target="_blank" rel="noopener" hidden>eBay sold</a>
+  </div>
 </div>
 </div>
 </div>
@@ -175,6 +188,19 @@
     <label>Estimated eBay fee %<input id="feePct" type="number" min="0" step=".1"></label>
     <button id="saveSettings" class="primary">Save rules</button>
   </div>
+  <div class="card form-card">
+    <h3>Intelligence backend</h3>
+    <p>Connect the app to the new product-identification backend. Your OpenAI key stays on the server, never in this browser.</p>
+    <label>Backend URL
+      <input id="backendUrl" placeholder="https://your-backend.onrender.com">
+    </label>
+    <div class="actions">
+      <button id="saveBackend" class="primary">Save backend</button>
+      <button id="testBackend" class="ghost">Test connection</button>
+    </div>
+    <div id="backendStatus" class="scan-status">Not tested.</div>
+  </div>
+
   <div class="card">
     <h3>Import opportunity feed</h3>
     <p>Import a JSON file using the same evidence format as the built-in feed. Imported records are labeled IMPORTED and never treated as store-confirmed inventory.</p>
