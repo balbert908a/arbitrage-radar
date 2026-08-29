@@ -176,7 +176,7 @@ async function startScanner(){
      $('#huntBarcode').value=code;$('#detectedCode').textContent=code;updateSearchLinks();
      $('#scanGoogle').href=googleQ(code);$('#scanEbaySold').href=ebaySold(code);
      $('#scanResultActions').hidden=false;
-     status.textContent='Barcode captured: '+code;
+     status.textContent='Barcode captured: '+code;if(!$('#huntItem').value.trim())$('#huntItem').value='UPC '+code;
      saveScan({kind:'barcode',barcode:code});stopScanner(false);return;
     }
    }catch{}
@@ -334,8 +334,12 @@ $('#fillGpsStore').onclick=useGpsForStore;
 
 $('#takePhoto').onclick=()=>{const f=$('#photoInput');f.value='';f.click();};
 $('#retakePhoto').onclick=()=>{const f=$('#photoInput');f.value='';f.click();};
+$('#analyzePhoto').onclick=()=>{const box=$('#photoAnalysis');box.hidden=false;const q=$('#photoClue').value.trim()||$('#huntItem').value.trim()||'identify product from photo';$('#photoGoogle').href=googleQ(q);$('#photoEbay').href=ebaySold(q);$('#photoClue').focus();};
+$('#photoClue').oninput=()=>{const q=$('#photoClue').value.trim()||'identify product';$('#photoGoogle').href=googleQ(q);$('#photoEbay').href=ebaySold(q);};
+$('#usePhotoClue').onclick=()=>{const q=$('#photoClue').value.trim();if(!q){$('#photoAnalysisText').textContent='Enter the brand or words visible on the item first.';return}$('#huntItem').value=q;updateSearchLinks();$('#photoAnalysisText').textContent='Identification added to the item workflow. Check sold comps, then enter the actual shelf price.';$('#huntItem').scrollIntoView({behavior:'smooth',block:'center'});};
+
 $('#photoInput').onchange=e=>handlePhoto(e.target.files?.[0]);
-$('#clearPhoto').onclick=()=>{currentPhotoData=null;$('#photoInput').value='';$('#photoBox').hidden=true;$('#photoPreview').removeAttribute('src');};
+$('#clearPhoto').onclick=()=>{currentPhotoData=null;$('#photoInput').value='';$('#photoBox').hidden=true;$('#photoAnalysis').hidden=true;$('#photoClue').value='';$('#photoPreview').removeAttribute('src');};
 $('#continueItem').onclick=()=>{$('#huntItem').focus();$('#huntItem').scrollIntoView({behavior:'smooth',block:'center'});};
 
 $('#saveSettings').onclick=()=>{

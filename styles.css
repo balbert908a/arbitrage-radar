@@ -18,3 +18,4 @@
 .quick-scan-card video.camera-live{display:block!important}
 
 .photo-input{margin-top:10px;display:block;width:100%;font-size:16px}
+.analysis-box{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)}.analysis-box[hidden]{display:none!important}.analysis-box label{display:block;color:var(--muted);margin:12px 0}

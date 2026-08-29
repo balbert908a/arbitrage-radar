@@ -1,12 +1,9 @@
-# Arbitrage Radar Release 2.5
+# Arbitrage Radar Release 2.6
 
-Mobile scanner regression fix.
-
-- Fixes camera preview visibility/state handling.
-- Barcode camera now explicitly opens/closes and keeps scanning until detection or Stop.
-- Adds a 15-second fallback message instead of silently appearing stuck.
-- Photo capture is no longer hidden behind JavaScript only: a native camera/file chooser is visibly available as a guaranteed fallback.
-- Open camera/photo and Retake reset the picker correctly.
-- Barcode detection still fills UPC and exposes Identify UPC + eBay sold.
-- Radar, Community, sightings, BUY/PASS, Reddit/Slickdeals evidence remain.
+Scanner workflow update:
+- Barcode capture now immediately creates a searchable UPC identification and sold-comps workflow.
+- Captured photos now expose an Identify from photo step and feed a product clue into item/resale searches.
+- The static PWA cannot send image pixels to an AI model without a backend/API. Release 2.6 therefore does not falsely claim automatic visual AI identification.
+- The UI is structured so a backend image-identification endpoint can replace the clue step without changing the resale workflow.
+- Existing Radar, Community, Reddit/Slickdeals, sightings and BUY/PASS remain.
 - No numeric opportunity scoring.
