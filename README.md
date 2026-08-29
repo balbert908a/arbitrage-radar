@@ -1,3 +1,12 @@
-Arbitrage Radar Release 2.4
+# Arbitrage Radar Release 2.5
 
-Fixes barcode post-scan actions and makes product photo capture a primary Scan action. Barcode detection now exposes Identify UPC and eBay Sold buttons immediately. Camera collapses after detection. Photo capture previews the item with Retake/Remove controls. Existing Radar, Community, sightings, and BUY/PASS workflow remain.
+Mobile scanner regression fix.
+
+- Fixes camera preview visibility/state handling.
+- Barcode camera now explicitly opens/closes and keeps scanning until detection or Stop.
+- Adds a 15-second fallback message instead of silently appearing stuck.
+- Photo capture is no longer hidden behind JavaScript only: a native camera/file chooser is visibly available as a guaranteed fallback.
+- Open camera/photo and Retake reset the picker correctly.
+- Barcode detection still fills UPC and exposes Identify UPC + eBay sold.
+- Radar, Community, sightings, BUY/PASS, Reddit/Slickdeals evidence remain.
+- No numeric opportunity scoring.

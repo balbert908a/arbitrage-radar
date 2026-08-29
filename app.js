@@ -155,23 +155,41 @@ function updateSearchLinks(){
 
 async function startScanner(){
  const status=$('#scanStatus'),video=$('#scanVideo');
- if(!navigator.mediaDevices?.getUserMedia){status.textContent='Camera scanning unavailable. Type the UPC or take a photo.';return}
- if(!('BarcodeDetector' in window)){status.textContent='Live barcode detection unavailable. Type the UPC or take a photo.';return}
+ stopScanner();
+ if(!navigator.mediaDevices?.getUserMedia){status.textContent='Camera unavailable. Use Take item photo or type the UPC.';return}
+ if(!('BarcodeDetector' in window)){status.textContent='Barcode detection unavailable here. Use Take item photo or type the UPC.';return}
  try{
-  const supported=await BarcodeDetector.getSupportedFormats?.(),preferred=['upc_a','upc_e','ean_13','ean_8','code_128','qr_code'];
-  const formats=supported?.length?preferred.filter(f=>supported.includes(f)):preferred,detector=new BarcodeDetector(formats.length?{formats}:undefined);
+  const supported=await BarcodeDetector.getSupportedFormats?.();
+  const preferred=['upc_a','upc_e','ean_13','ean_8','code_128','qr_code'];
+  const formats=supported?.length?preferred.filter(f=>supported.includes(f)):preferred;
+  const detector=new BarcodeDetector(formats.length?{formats}:undefined);
   mediaStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-  video.hidden=false;video.srcObject=mediaStream;await video.play();status.textContent='Scanning… hold barcode steady.';const token=++scanLoopToken;
-  const loop=async()=>{if(token!==scanLoopToken||!mediaStream)return;try{const r=await detector.detect(video),code=r?.[0]?.rawValue||'';if(code){$('#huntBarcode').value=code;$('#detectedCode').textContent=code;updateSearchLinks();$('#scanGoogle').href=googleQ(code);$('#scanEbaySold').href=ebaySold(code);$('#scanResultActions').hidden=false;status.textContent='Barcode captured. Identify it or check sold comps.';saveScan({kind:'barcode',barcode:code});stopScanner();return}}catch{}setTimeout(loop,300)};loop()
- }catch(e){status.textContent='Could not start camera: '+e.message;video.hidden=true}
+  video.srcObject=mediaStream;video.hidden=false;video.classList.add('camera-live');
+  await video.play();
+  status.textContent='Scanning… point the camera at the barcode.';
+  const token=++scanLoopToken, started=Date.now();
+  const loop=async()=>{
+   if(token!==scanLoopToken||!mediaStream)return;
+   try{
+    const r=await detector.detect(video),code=r?.[0]?.rawValue||'';
+    if(code){
+     $('#huntBarcode').value=code;$('#detectedCode').textContent=code;updateSearchLinks();
+     $('#scanGoogle').href=googleQ(code);$('#scanEbaySold').href=ebaySold(code);
+     $('#scanResultActions').hidden=false;
+     status.textContent='Barcode captured: '+code;
+     saveScan({kind:'barcode',barcode:code});stopScanner(false);return;
+    }
+   }catch{}
+   if(Date.now()-started>15000) status.textContent='Still scanning. Move closer or use Take item photo / manual UPC.';
+   setTimeout(loop,250);
+  };loop();
+ }catch(err){status.textContent='Camera could not start: '+err.message;stopScanner(false)}
 }
-function stopScanner(){
-  ++scanLoopToken;
-  if(mediaStream){
-    mediaStream.getTracks().forEach(t=>t.stop());
-    mediaStream=null;
-  }
-  const v=$('#scanVideo');if(v){v.srcObject=null;v.hidden=true;}
+function stopScanner(setStatus=true){
+ ++scanLoopToken;
+ if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());mediaStream=null}
+ const v=$('#scanVideo');if(v){v.pause();v.srcObject=null;v.classList.remove('camera-live');v.hidden=true}
+ if(setStatus&&$('#scanStatus'))$('#scanStatus').textContent='Scanner stopped.';
 }
 
 function saveScan(extra={}){
@@ -314,8 +332,8 @@ $('#startScan').onclick=startScanner;
 $('#stopScan').onclick=stopScanner;
 $('#fillGpsStore').onclick=useGpsForStore;
 
-$('#takePhoto').onclick=()=>$('#photoInput').click();
-$('#retakePhoto').onclick=()=>$('#photoInput').click();
+$('#takePhoto').onclick=()=>{const f=$('#photoInput');f.value='';f.click();};
+$('#retakePhoto').onclick=()=>{const f=$('#photoInput');f.value='';f.click();};
 $('#photoInput').onchange=e=>handlePhoto(e.target.files?.[0]);
 $('#clearPhoto').onclick=()=>{currentPhotoData=null;$('#photoInput').value='';$('#photoBox').hidden=true;$('#photoPreview').removeAttribute('src');};
 $('#continueItem').onclick=()=>{$('#huntItem').focus();$('#huntItem').scrollIntoView({behavior:'smooth',block:'center'});};

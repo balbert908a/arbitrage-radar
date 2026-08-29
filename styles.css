@@ -13,3 +13,8 @@
 .compact{gap:0}
 @media(max-width:680px){.scan-grid{grid-template-columns:1fr}.scanner-card video{aspect-ratio:1/1}.scan-row{align-items:flex-start;flex-direction:column}}
 .quick-scan-card{margin-bottom:14px}.scan-actions{display:grid;grid-template-columns:1.2fr 1.2fr .9fr;gap:10px;margin:14px 0}.quick-scan-card video{display:block;width:100%;max-height:390px;aspect-ratio:4/3;background:#02060c;border:1px solid var(--line);border-radius:14px;object-fit:cover;margin-top:12px}.quick-scan-card video[hidden],#photoBox[hidden],.scan-result-actions[hidden]{display:none}.scan-result-actions{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)}.detected-code{font-size:18px;margin-bottom:10px}#photoBox{margin-top:14px}@media(max-width:680px){.scan-actions{grid-template-columns:1fr 1fr}.scan-actions #stopScan{grid-column:1/-1}}
+/* 2.5: hidden must always win over component display rules */
+[hidden]{display:none!important}
+.quick-scan-card video.camera-live{display:block!important}
+
+.photo-input{margin-top:10px;display:block;width:100%;font-size:16px}
