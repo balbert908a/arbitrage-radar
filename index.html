@@ -11,7 +11,7 @@
 <body>
 <header>
   <div><div class="eyebrow">RETAIL ARBITRAGE</div><h1>Arbitrage Radar</h1></div>
-  <div class="version">RELEASE 2.3</div>
+  <div class="version">RELEASE 2.4</div>
 </header>
 
 <main>
@@ -82,29 +82,16 @@
     No Radar lead selected. You can still scan any item.
   </div>
 
-  <div class="scan-grid">
-    <div class="card scanner-card">
-      <h3>Barcode scanner</h3>
-      <p>Uses your phone camera when supported. UPC/EAN/QR detection stays on-device in the browser.</p>
-      <video id="scanVideo" playsinline muted></video>
-      <canvas id="scanCanvas" hidden></canvas>
-      <div class="actions">
-        <button id="startScan" class="primary">Start camera scan</button>
-        <button id="stopScan" class="ghost">Stop camera</button>
-      </div>
-      <div id="scanStatus" class="scan-status">Scanner idle.</div>
-    </div>
-
-    <div class="card scanner-card">
-      <h3>Photo / bins / thrift</h3>
-      <p>Use this when there is no usable barcode. Capture the item so the photo stays with the scan record, then type a short identifying description.</p>
-      <input id="photoInput" type="file" accept="image/*" capture="environment">
-      <img id="photoPreview" class="photo-preview" alt="" hidden>
-      <button id="clearPhoto" class="ghost">Clear photo</button>
-    </div>
-  </div>
-
-  <div class="card form-card">
+  <div class="card quick-scan-card">
+<h3>Identify item</h3><p>Scan the barcode or take a product photo.</p>
+<div class="scan-actions"><button id="startScan" class="primary">Scan barcode</button><button id="takePhoto" class="ghost">Take item photo</button><button id="stopScan" class="ghost">Stop camera</button></div>
+<video id="scanVideo" playsinline muted hidden></video><canvas id="scanCanvas" hidden></canvas>
+<input id="photoInput" type="file" accept="image/*" capture="environment" hidden>
+<div id="scanStatus" class="scan-status">Ready to scan.</div>
+<div id="scanResultActions" class="scan-result-actions" hidden><div class="detected-code">Detected: <b id="detectedCode"></b></div><div class="actions"><a id="scanGoogle" class="primary" target="_blank" rel="noopener">Identify UPC</a><a id="scanEbaySold" class="ghost" target="_blank" rel="noopener">eBay sold</a><button id="continueItem" class="ghost">Continue below</button></div></div>
+<div id="photoBox" hidden><img id="photoPreview" class="photo-preview" alt="Captured item photo"><div class="actions"><button id="retakePhoto" class="ghost">Retake photo</button><button id="clearPhoto" class="ghost">Remove photo</button></div></div>
+</div>
+<div class="card form-card">
     <h3>Item</h3>
     <div class="two">
       <label>UPC / barcode

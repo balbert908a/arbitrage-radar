@@ -154,55 +154,24 @@ function updateSearchLinks(){
 }
 
 async function startScanner(){
-  const status=$('#scanStatus'), video=$('#scanVideo');
-  if(!navigator.mediaDevices?.getUserMedia){
-    status.textContent='Camera scanning is not supported in this browser. Use photo or manual entry.';
-    return;
-  }
-  if(!('BarcodeDetector' in window)){
-    status.textContent='Live barcode detection is not supported here. Use the photo picker or type the barcode manually.';
-    return;
-  }
-  try{
-    const supported = await BarcodeDetector.getSupportedFormats?.();
-    const preferred = ['upc_a','upc_e','ean_13','ean_8','code_128','qr_code'];
-    const formats = supported?.length ? preferred.filter(f=>supported.includes(f)) : preferred;
-    const detector = new BarcodeDetector(formats.length?{formats}:undefined);
-    mediaStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-    video.srcObject=mediaStream; await video.play();
-    status.textContent='Scanning… hold the barcode steady in view.';
-    const token=++scanLoopToken;
-    const loop=async()=>{
-      if(token!==scanLoopToken || !mediaStream) return;
-      try{
-        const results=await detector.detect(video);
-        if(results?.length){
-          const code=results[0].rawValue||'';
-          if(code){
-            $('#huntBarcode').value=code;
-            updateSearchLinks();
-            status.textContent='Barcode detected: '+code;
-            saveScan({kind:'barcode',barcode:code,item:$('#huntItem').value,retailer:$('#huntRetailer').value,store:$('#huntStore').value,activeLeadId:state.activeLeadId});
-            stopScanner();
-            return;
-          }
-        }
-      }catch{}
-      setTimeout(loop,350);
-    };
-    loop();
-  }catch(e){
-    status.textContent='Could not start camera: '+e.message;
-  }
+ const status=$('#scanStatus'),video=$('#scanVideo');
+ if(!navigator.mediaDevices?.getUserMedia){status.textContent='Camera scanning unavailable. Type the UPC or take a photo.';return}
+ if(!('BarcodeDetector' in window)){status.textContent='Live barcode detection unavailable. Type the UPC or take a photo.';return}
+ try{
+  const supported=await BarcodeDetector.getSupportedFormats?.(),preferred=['upc_a','upc_e','ean_13','ean_8','code_128','qr_code'];
+  const formats=supported?.length?preferred.filter(f=>supported.includes(f)):preferred,detector=new BarcodeDetector(formats.length?{formats}:undefined);
+  mediaStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+  video.hidden=false;video.srcObject=mediaStream;await video.play();status.textContent='Scanning… hold barcode steady.';const token=++scanLoopToken;
+  const loop=async()=>{if(token!==scanLoopToken||!mediaStream)return;try{const r=await detector.detect(video),code=r?.[0]?.rawValue||'';if(code){$('#huntBarcode').value=code;$('#detectedCode').textContent=code;updateSearchLinks();$('#scanGoogle').href=googleQ(code);$('#scanEbaySold').href=ebaySold(code);$('#scanResultActions').hidden=false;status.textContent='Barcode captured. Identify it or check sold comps.';saveScan({kind:'barcode',barcode:code});stopScanner();return}}catch{}setTimeout(loop,300)};loop()
+ }catch(e){status.textContent='Could not start camera: '+e.message;video.hidden=true}
 }
-
 function stopScanner(){
   ++scanLoopToken;
   if(mediaStream){
     mediaStream.getTracks().forEach(t=>t.stop());
     mediaStream=null;
   }
-  const v=$('#scanVideo'); if(v) v.srcObject=null;
+  const v=$('#scanVideo');if(v){v.srcObject=null;v.hidden=true;}
 }
 
 function saveScan(extra={}){
@@ -325,13 +294,7 @@ function importJson(file){
 }
 
 function handlePhoto(file){
-  if(!file) return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    currentPhotoData=reader.result;
-    const img=$('#photoPreview'); img.src=currentPhotoData; img.hidden=false;
-  };
-  reader.readAsDataURL(file);
+ if(!file)return;const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=()=>{const max=1000,scale=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));c.getContext('2d').drawImage(img,0,0,c.width,c.height);currentPhotoData=c.toDataURL('image/jpeg',0.72);$('#photoPreview').src=currentPhotoData;$('#photoBox').hidden=false;};img.src=reader.result};reader.readAsDataURL(file)
 }
 
 loadState();
@@ -344,15 +307,18 @@ $('#freshOnly').onchange=renderOpps;
 $('#useLocation').onclick=locate;
 
 $('#huntItem').oninput=updateSearchLinks;
-$('#huntBarcode').oninput=updateSearchLinks;
+$('#huntBarcode').oninput=()=>{updateSearchLinks();const code=$('#huntBarcode').value.trim();if(code){$('#detectedCode').textContent=code;$('#scanGoogle').href=googleQ(code);$('#scanEbaySold').href=ebaySold(code);$('#scanResultActions').hidden=false;}};
 $('#evaluate').onclick=evaluate;
 $('#saveSighting').onclick=()=>{saveScan({kind:'sighting'}); alert('Sighting saved.');};
 $('#startScan').onclick=startScanner;
 $('#stopScan').onclick=stopScanner;
 $('#fillGpsStore').onclick=useGpsForStore;
 
+$('#takePhoto').onclick=()=>$('#photoInput').click();
+$('#retakePhoto').onclick=()=>$('#photoInput').click();
 $('#photoInput').onchange=e=>handlePhoto(e.target.files?.[0]);
-$('#clearPhoto').onclick=()=>{currentPhotoData=null; $('#photoInput').value=''; $('#photoPreview').hidden=true; $('#photoPreview').removeAttribute('src');};
+$('#clearPhoto').onclick=()=>{currentPhotoData=null;$('#photoInput').value='';$('#photoBox').hidden=true;$('#photoPreview').removeAttribute('src');};
+$('#continueItem').onclick=()=>{$('#huntItem').focus();$('#huntItem').scrollIntoView({behavior:'smooth',block:'center'});};
 
 $('#saveSettings').onclick=()=>{
   state.settings={minProfit:+$('#minProfit').value||0,minRoi:+$('#minRoi').value||0,feePct:+$('#feePct').value||0};
